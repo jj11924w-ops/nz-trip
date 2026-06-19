@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>紐西蘭南島 旅遊規劃</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#F7F5F0;--panel:#fff;--text:#1A1A18;--muted:#6B6B65;--border:#E0DDD6;--accent:#2C6E49;--accent2:#E76F51}
+html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFang TC','Microsoft JhengHei',sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+/* topbar */
+.topbar{height:52px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px;flex-shrink:0;z-index:200}
+.logo{font-size:15px;font-weight:700;color:var(--accent);white-space:nowrap}.logo span{color:var(--accent2)}
+.trip-meta{display:flex;align-items:center;gap:5px;margin-left:auto;flex-shrink:0}
+.trip-meta label{font-size:11px;color:var(--muted);white-space:nowrap}
+.trip-meta input{border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12px;background:var(--bg);color:var(--text)}
+.sync-pill{display:flex;align-items:center;gap:5px;border-left:1px solid var(--border);padding-left:8px;margin-left:4px;flex-shrink:0}
+.sdot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0}
+.sdot.ok{background:#2C6E49}.sdot.err{background:#DC2626}.sdot.ing{background:#F59E0B;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.slbl{font-size:11px;color:var(--muted);white-space:nowrap}
+/* layout */
+.layout{display:flex;height:calc(100vh - 52px);position:relative}
+.lpanel{width:300px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;z-index:10}
+.lpanel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.ltab{flex:1;padding:8px 0;font-size:12px;text-align:center;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:2px solid transparent}
+.ltab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+.map-wrap{flex:1;position:relative;overflow:hidden}
+#map{width:100%;height:100%}
+.rdrawer{width:0;overflow:hidden;background:var(--panel);border-left:1px solid var(--border);transition:width .25s ease;display:flex;flex-direction:column;flex-shrink:0;z-index:10}
+.rdrawer.open{width:340px}
+.rdrawer-toggle{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:200;background:var(--panel);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;padding:10px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;box-shadow:-2px 0 8px rgba(0,0,0,.06);transition:right .25s ease}
+.rdrawer-toggle span{font-size:10px;color:var(--muted);writing-mode:vertical-rl;letter-spacing:1px}
+.rtarrow{font-size:12px;color:var(--muted)}
+/* map ui */
+.mleg{position:absolute;top:10px;right:10px;z-index:100;background:rgba(255,255,255,.93);border-radius:8px;border:1px solid var(--border);padding:8px 10px;font-size:11px;line-height:1.9;pointer-events:none}
+.ldot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.mtip{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:100;background:rgba(255,255,255,.9);border-radius:20px;border:1px solid var(--border);padding:5px 13px;font-size:11px;color:var(--muted);white-space:nowrap;pointer-events:none}
+.day-filter-bar{position:absolute;top:10px;left:10px;z-index:100;display:flex;gap:5px;flex-wrap:wrap;max-width:260px}
+.day-pill{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.9);cursor:pointer;color:var(--muted);white-space:nowrap}
+.day-pill.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* spots */
+.frow{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0}
+.chip{font-size:11px;padding:3px 8px;border-radius:12px;border:1px solid var(--border);cursor:pointer;background:none;color:var(--muted)}
+.chip.on{background:var(--text);color:#fff;border-color:var(--text)}
+.slist{flex:1;overflow-y:auto;padding:6px}
+.sc{padding:8px 10px;border-radius:8px;border:1px solid var(--border);margin-bottom:5px;cursor:grab;background:var(--panel);user-select:none;position:relative}
+.sc:hover{border-color:var(--accent);box-shadow:0 0 0 2px rgba(44,110,73,.08)}
+.sc.hl{border-color:var(--accent);box-shadow:0 0 0 3px rgba(44,110,73,.13)}
+.sc.dragging{opacity:.4}
+.sc-top{display:flex;align-items:flex-start;gap:4px}
+.scn{font-size:13px;font-weight:600;flex:1;line-height:1.3}
+.sc-actions{display:flex;gap:3px;flex-shrink:0}
+.sc-btn{font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted)}
+.sc-btn:hover{background:#F0EDE8;color:var(--text)}
+.sc-btn.del:hover{background:#FEF2F2;color:#DC2626;border-color:#FCA5A5}
+.scr{font-size:11px;color:var(--muted);margin-top:1px}
+.scm{display:flex;align-items:center;gap:4px;margin-top:4px;flex-wrap:wrap}
+.tag{font-size:10px;padding:2px 6px;border-radius:9px;font-weight:500}
+.tn{background:#EAF5EE;color:#2C6E49}.tf{background:#FCEEE9;color:#C4572A}.ta{background:#F0EBF8;color:#7B5EA7}.tc{background:#E6F2FB;color:#1D6FA4}
+.db{font-size:10px;color:var(--muted);background:#F0EDE8;border-radius:7px;padding:2px 6px}
+.nc{font-size:10px;color:#92400E;background:#FEF3C7;border-radius:7px;padding:2px 6px}
+.scnote{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}
+.drag-hint{font-size:10px;color:var(--muted);text-align:center;padding:5px 0 2px;opacity:.7;flex-shrink:0}
+.addrow{margin:5px 10px 7px;padding:7px;border-radius:7px;border:1px dashed var(--border);background:none;color:var(--muted);font-size:12px;cursor:pointer;width:calc(100% - 20px);text-align:center;flex-shrink:0}
+.addrow:hover{border-color:var(--accent);color:var(--accent)}
+/* itinerary */
+.itinerary-inner{display:flex;flex-direction:column;height:100%;overflow:hidden;min-width:340px}
+.ihead{padding:9px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ihead-title{font-size:13px;font-weight:600}
+.adddaybtn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--accent);color:var(--accent);background:none;cursor:pointer}
+.adddaybtn:hover{background:var(--accent);color:#fff}
+.dcon{flex:1;overflow-y:auto;padding:8px}
+.day-block{border:1px solid var(--border);border-radius:9px;margin-bottom:8px;overflow:hidden}
+.day-block.dov{border-color:var(--accent);box-shadow:0 0 0 2px rgba(44,110,73,.15)}
+.day-block.active-day{border-color:var(--accent);border-width:2px}
+.dh{background:#F7F5F0;padding:7px 10px;display:flex;align-items:center;gap:6px;cursor:pointer}
+.dh:hover{background:#eeecea}
+.dnum{font-size:12px;font-weight:600;color:var(--accent);white-space:nowrap}
+.dtit{font-size:11px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dtt{font-size:11px;color:var(--muted);background:#fff;border-radius:7px;padding:2px 6px;border:1px solid var(--border);white-space:nowrap;flex-shrink:0}
+.dtt.over{color:#DC2626;border-color:#FCA5A5}
+.dbody{padding:6px;min-height:36px}
+.drop-hint{font-size:11px;color:#bbb;text-align:center;padding:7px 0;border:1.5px dashed #E0DDD6;border-radius:6px;margin:2px 0}
+.drop-hint.active{border-color:var(--accent);color:var(--accent);background:#F0FDF4}
+/* stop row — fixed layout */
+.srow{border-bottom:1px solid #F0EDE8;padding:6px 4px}
+.srow:last-child{border-bottom:none}
+.srow-main{display:flex;align-items:center;gap:4px}
+.srow-handle{font-size:12px;color:#ccc;padding:0 2px;flex-shrink:0;cursor:grab}
+.sdot2{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.srow-name{font-size:12px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sdel{font-size:11px;color:#ccc;cursor:pointer;border:none;background:none;padding:2px 5px;border-radius:3px;flex-shrink:0}
+.sdel:hover{color:#DC2626;background:#FEF2F2}
+.srow-meta{display:flex;align-items:center;gap:6px;margin-top:5px;padding-left:22px;flex-wrap:wrap}
+.time-lbl{font-size:10px;color:var(--muted);white-space:nowrap}
+.time-input{width:76px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;font-size:11px;background:var(--bg);color:var(--text)}
+.dur-input{width:52px;border:1px solid var(--border);border-radius:5px;padding:3px 4px;font-size:11px;background:var(--bg);color:var(--text);text-align:center}
+.stop-note-input{width:100%;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:11px;background:var(--bg);color:var(--text);margin-top:4px;margin-left:22px;width:calc(100% - 26px);font-family:inherit}
+.stop-note-input::placeholder{color:#bbb}
+.drive-row{display:flex;align-items:center;gap:3px;padding:3px 0 3px 14px;font-size:10px;color:#1D6FA4}
+/* budget */
+.bpanel{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+/* members */
+.member-section{background:#F7F5F0;border-radius:8px;padding:10px 12px}
+.member-section h4{font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text)}
+.member-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.member-tag{display:flex;align-items:center;gap:4px;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:12px}
+.member-del{background:none;border:none;cursor:pointer;color:#bbb;font-size:12px;padding:0 2px}
+.member-del:hover{color:#DC2626}
+.member-add-row{display:flex;gap:6px}
+.member-add-row input{flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--panel);color:var(--text)}
+.member-add-row button{padding:5px 10px;border-radius:6px;border:1px solid var(--accent);color:var(--accent);background:none;font-size:12px;cursor:pointer;white-space:nowrap}
+.member-add-row button:hover{background:var(--accent);color:#fff}
+/* expense list */
+.expense-section h4{font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text)}
+.ei{border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:var(--panel)}
+.ei-top{display:flex;align-items:center;gap:6px}
+.ei-name{font-size:12px;font-weight:500;flex:1}
+.ei-payer{font-size:10px;color:#2C6E49;background:#EAF5EE;padding:2px 7px;border-radius:10px;white-space:nowrap}
+.ei-amt{font-size:13px;font-weight:600;min-width:70px;text-align:right}
+.ei-splits{margin-top:5px;display:flex;flex-wrap:wrap;gap:4px}
+.ei-split-chip{font-size:10px;padding:2px 7px;border-radius:10px;background:#F0EDE8;color:var(--muted)}
+.ei-del{font-size:11px;color:#ccc;cursor:pointer;border:none;background:none;padding:2px 4px;border-radius:3px}
+.ei-del:hover{color:#DC2626}
+.adde{padding:7px;border-radius:7px;border:1px dashed var(--border);background:none;color:var(--muted);font-size:12px;cursor:pointer;width:100%}
+.adde:hover{border-color:var(--accent);color:var(--accent)}
+/* settlement */
+.settle-section{background:#EAF5EE;border-radius:8px;padding:10px 12px}
+.settle-section h4{font-size:12px;font-weight:600;margin-bottom:8px;color:#2C6E49}
+.settle-row{font-size:12px;padding:4px 0;border-bottom:1px solid rgba(44,110,73,.1);display:flex;align-items:center;gap:6px}
+.settle-row:last-child{border-bottom:none}
+.settle-from{font-weight:500;color:#DC2626}
+.settle-to{font-weight:500;color:#2C6E49}
+.settle-amt{margin-left:auto;font-weight:600}
+/* modal */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center}
+.ov.on{display:flex}
+.modal{background:var(--panel);border-radius:13px;padding:20px;width:500px;max-width:95vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.22)}
+.modal h3{font-size:15px;font-weight:600;margin-bottom:14px}
+.fg{margin-bottom:11px}
+.fg label{font-size:11px;color:var(--muted);display:block;margin-bottom:3px;font-weight:500}
+.fg input,.fg select,.fg textarea{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit}
+.fg textarea{resize:vertical;min-height:52px}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.mfooter{display:flex;justify-content:flex-end;gap:7px;margin-top:14px}
+.btn{padding:7px 14px;border-radius:6px;font-size:13px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text);font-family:inherit}
+.btn:hover{background:#F0EDE8}
+.btnp{background:var(--accent);color:#fff;border-color:var(--accent)}.btnp:hover{background:#235A3C}
+.divider{display:flex;align-items:center;gap:8px;margin:10px 0;color:var(--muted);font-size:11px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.gmap-row{display:flex;gap:6px}
+.gmap-row input{flex:1;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit}
+.gmap-row button{padding:7px 12px;border-radius:6px;border:1px solid var(--accent);color:var(--accent);background:none;font-size:12px;cursor:pointer;white-space:nowrap}
+.gmap-row button:hover{background:var(--accent);color:#fff}
+.gres2{font-size:11px;margin-top:5px;line-height:1.6;color:var(--muted)}
+.gres2.ok{color:#2C6E49}.gres2.err{color:#DC2626}.gres2.ing{color:#1D6FA4}
+.swrap{position:relative}
+.swrap input{padding-right:52px}
+.sbtn{position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:4px 8px;font-size:11px;border-radius:5px;border:1px solid var(--accent);color:var(--accent);background:none;cursor:pointer}
+.sbtn:hover{background:var(--accent);color:#fff}
+.sres{font-size:11px;margin-top:3px;min-height:14px}
+.sres.ok{color:#2C6E49}.sres.err{color:#DC2626}.sres.ing{color:#1D6FA4}
+/* split table in expense modal */
+.split-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.split-table th{text-align:left;padding:4px 6px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);font-size:11px}
+.split-table td{padding:4px 6px;border-bottom:1px solid #F0EDE8}
+.split-table tr:last-child td{border-bottom:none}
+.split-input{width:70px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;font-size:12px;background:var(--bg);color:var(--text);text-align:right}
+.split-check{width:16px;height:16px;cursor:pointer}
+.split-mode{display:flex;gap:6px;margin-bottom:8px}
+.split-mode button{flex:1;padding:5px 0;border-radius:6px;border:1px solid var(--border);background:none;font-size:11px;cursor:pointer;color:var(--muted)}
+.split-mode button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* mobile */
+.mob-bar{display:none}
+@media(max-width:700px){
+  .lpanel{display:none!important}.rdrawer{display:none!important}.rdrawer-toggle{display:none!important}.day-filter-bar{display:none!important}.mob-bar{display:flex!important}
+  /* mobile: topbar 52px fixed, mob-bar 54px fixed at bottom, map fills middle */
+  body{overflow:hidden}
+  .layout{
+    position:fixed;
+    top:52px;
+    left:0;right:0;
+    bottom:54px;
+    height:auto;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .map-wrap{flex:1;position:relative;overflow:hidden}
+  #map{position:absolute;inset:0}
+  /* bottom bar */
+  .mob-bar{display:flex!important;position:fixed;bottom:0;left:0;right:0;z-index:300;background:var(--panel);border-top:1px solid var(--border);flex-direction:column;box-shadow:0 -2px 12px rgba(0,0,0,.1);min-height:54px}
+  .mob-tabs{display:flex;flex-shrink:0}
+  .mob-tab{flex:1;padding:11px 0 9px;font-size:11px;text-align:center;cursor:pointer;border:none;background:none;color:var(--muted);border-top:2px solid transparent;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .mob-tab .mob-tab-icon{font-size:16px}
+  .mob-tab.on{color:var(--accent);border-top-color:var(--accent);font-weight:500}
+  /* sheet slides up */
+  .mob-sheet{overflow:hidden;transition:height .3s cubic-bezier(.4,0,.2,1);background:var(--panel)}
+  .mob-sheet-inner{overflow-y:auto;height:100%;padding:0}
+  /* sheet header */
+  .mob-sheet-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 8px;border-bottom:1px solid var(--border);flex-shrink:0;position:sticky;top:0;background:var(--panel);z-index:2}
+  .mob-sheet-title{font-size:14px;font-weight:600}
+  .mob-sheet-actions{display:flex;gap:6px}
+  .mob-sheet-btn{font-size:12px;padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted)}
+  .mob-sheet-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  /* preview mode */
+  .mob-preview{padding:10px 14px}
+  .mob-day-preview{margin-bottom:14px}
+  .mob-day-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px}
+  .mob-stop-preview{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #F0EDE8}
+  .mob-stop-preview:last-child{border-bottom:none}
+  .mob-stop-time{font-size:11px;color:var(--muted);min-width:40px;flex-shrink:0;padding-top:1px}
+  .mob-stop-info{flex:1}
+  .mob-stop-name{font-size:13px;font-weight:500}
+  .mob-stop-note{font-size:11px;color:var(--muted);margin-top:1px}
+  .mob-drive-preview{font-size:10px;color:#1D6FA4;padding:2px 0 2px 48px}
+  /* edit mode spot cards */
+  .mob-spot-card{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;cursor:grab;active:cursor:grabbing}
+  .mob-spot-card-info{flex:1}
+  .mob-spot-card-name{font-size:13px;font-weight:500}
+  .mob-spot-card-meta{font-size:11px;color:var(--muted);margin-top:2px}
+  .mob-add-btn{margin:10px 14px;padding:10px;border-radius:8px;border:1px dashed var(--border);background:none;color:var(--muted);font-size:13px;cursor:pointer;width:calc(100% - 28px);text-align:center}
+  .mob-add-btn:active{background:#F0EDE8}
+  /* edit day block on mobile */
+  .mob-edit-day{border:1px solid var(--border);border-radius:9px;margin:8px 14px;overflow:hidden}
+  .mob-edit-dh{background:#F7F5F0;padding:8px 12px;display:flex;align-items:center;gap:6px}
+  .mob-edit-dbody{padding:6px 10px}
+  .mob-edit-drop{font-size:11px;color:#bbb;text-align:center;padding:10px;border:1.5px dashed #E0DDD6;border-radius:6px;margin:4px 0}
+}
+@media(min-width:701px){.mob-bar{display:none!important}}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#D0CCC4;border-radius:2px}
+.empty{text-align:center;padding:24px 12px;color:var(--muted);font-size:12px;line-height:1.7}
+.empty-icon{font-size:24px;margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">NZ 南島<span>規劃</span></div>
+  <div class="trip-meta">
+    <label>出發</label>
+    <input type="date" id="tstart" style="width:124px" onchange="rebuildDays()">
+    <label>共</label>
+    <input type="number" id="tdays" value="10" min="1" max="30" style="width:38px" onchange="rebuildDays()">
+    <label>天</label>
+  </div>
+  <div class="sync-pill">
+    <div class="sdot" id="sdot"></div>
+    <span class="slbl" id="slbl">載入中…</span>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="lpanel">
+    <div class="lpanel-tabs">
+      <button class="ltab on" onclick="ltab('spots',this)">🗺 景點庫</button>
+      <button class="ltab" onclick="ltab('budget',this)">💰 分帳</button>
+    </div>
+    <div id="lsec-spots" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <div class="frow">
+        <button class="chip on" onclick="filt('all',this)">全部</button>
+        <button class="chip" onclick="filt('nature',this)">自然</button>
+        <button class="chip" onclick="filt('food',this)">美食</button>
+        <button class="chip" onclick="filt('activity',this)">活動</button>
+        <button class="chip" onclick="filt('city',this)">城市</button>
+      </div>
+      <div class="slist" id="slist"></div>
+      <div class="drag-hint">☝ 拖曳景點卡片到右側行程</div>
+      <button class="addrow" onclick="openM('spot')">＋ 新增景點</button>
+    </div>
+    <div id="lsec-budget" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="bpanel" id="bpanel"></div>
+    </div>
+  </div>
+
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="day-filter-bar" id="day-filter-bar"></div>
+    <div class="mleg">
+      <div><span class="ldot" style="background:#2C6E49"></span>自然</div>
+      <div><span class="ldot" style="background:#C4572A"></span>美食</div>
+      <div><span class="ldot" style="background:#7B5EA7"></span>活動</div>
+      <div><span class="ldot" style="background:#1D6FA4"></span>城市</div>
+    </div>
+    <div class="mtip">💡 點天數標籤篩選地圖 · 拖曳景點到行程</div>
+  </div>
+
+  <div class="rdrawer open" id="rdrawer">
+    <div class="itinerary-inner">
+      <div class="ihead">
+        <span class="ihead-title">📅 行程安排</span>
+        <button class="adddaybtn" onclick="addDay()">＋ 天數</button>
+      </div>
+      <div class="dcon" id="dcon"></div>
+    </div>
+  </div>
+  <div class="rdrawer-toggle" onclick="toggleDrawer()">
+    <span class="rtarrow" id="rtarrow">▶</span>
+    <span>行程</span>
+  </div>
+</div>
+
+<div class="mob-bar" id="mob-bar">
+  <div class="mob-tabs">
+    <button class="mob-tab on" id="mobtab-spots" onclick="mobTab('spots',this)">
+      <span class="mob-tab-icon">🗺</span>景點庫
+    </button>
+    <button class="mob-tab" id="mobtab-itinerary" onclick="mobTab('itinerary',this)">
+      <span class="mob-tab-icon">📅</span>行程
+    </button>
+    <button class="mob-tab" id="mobtab-budget" onclick="mobTab('budget',this)">
+      <span class="mob-tab-icon">💰</span>分帳
+    </button>
+    <button class="mob-tab" onclick="toggleMobSheet()">
+      <span class="mob-tab-icon" id="mob-collapse-icon">▲</span>收合
+    </button>
+  </div>
+  <div class="mob-sheet" id="mobsheet" style="height:0">
+    <div class="mob-sheet-inner" id="mobinner"></div>
+  </div>
+</div>
+
+<!-- 新增/編輯景點 -->
+<div class="ov" id="ov-spot">
+<div class="modal">
+  <h3 id="spot-modal-title">新增景點</h3>
+  <div class="fg">
+    <label>從 Google Maps 匯入</label>
+    <div class="gmap-row">
+      <input type="text" id="gmurl" placeholder="貼入完整 Google Maps 網址（含 @座標）">
+      <button onclick="importGmap()">匯入</button>
+    </div>
+    <div class="gres2" id="gmres">💡 Google Maps 開啟景點 → 複製瀏覽器網址列完整網址貼入</div>
+  </div>
+  <div class="divider">或手動填寫</div>
+  <div class="fg">
+    <label>景點名稱</label>
+    <div class="swrap">
+      <input type="text" id="sname" placeholder="例：Milford Sound">
+      <button class="sbtn" onclick="geocode()">定位</button>
+    </div>
+    <div class="sres" id="sres"></div>
+  </div>
+  <div class="fr2">
+    <div class="fg"><label>地區</label>
+      <select id="sreg">
+        <option>基督城</option><option>湖區(特卡波/普卡基)</option><option>庫克山</option>
+        <option>皇后鎮</option><option>瓦納卡</option><option>峽灣/蒂阿瑙</option>
+        <option>但尼丁</option><option>西海岸</option><option>其他</option>
+      </select>
+    </div>
+    <div class="fg"><label>分類</label>
+      <select id="scat">
+        <option value="nature">🏔 自然</option><option value="food">🍽 美食</option>
+        <option value="activity">🎿 活動</option><option value="city">🏙 城市</option>
+      </select>
+    </div>
+  </div>
+  <div class="fr2">
+    <div class="fg"><label>預設停留時間</label>
+      <select id="sdursel">
+        <option value="0.5">0.5h</option><option value="1">1h</option>
+        <option value="2" selected>2h</option><option value="3">3h</option>
+        <option value="4">4h</option><option value="6">半天6h</option>
+        <option value="8">全天8h</option><option value="16">兩天</option>
+      </select>
+    </div>
+    <div class="fg"><label>預估費用 NZD</label>
+      <input type="number" id="scost" placeholder="0" min="0">
+    </div>
+  </div>
+  <div class="fg"><label>備註</label>
+    <textarea id="snote" placeholder="開放時間、注意事項、訂票連結..."></textarea>
+  </div>
+  <input type="hidden" id="sedit-id">
+  <div class="mfooter">
+    <button class="btn" onclick="closeM('spot')">取消</button>
+    <button class="btn btnp" onclick="saveSpot()">儲存景點</button>
+  </div>
+</div>
+</div>
+
+<!-- 新增費用 (Splitwise 風格) -->
+<div class="ov" id="ov-exp">
+<div class="modal">
+  <h3 id="exp-modal-title">新增費用</h3>
+  <div class="fr2">
+    <div class="fg"><label>項目名稱</label><input type="text" id="ename" placeholder="米佛峽灣船票"></div>
+    <div class="fg"><label>總金額 NZD</label><input type="number" id="eamt" placeholder="0" min="0" oninput="autoSplitEqual()"></div>
+  </div>
+  <div class="fr2">
+    <div class="fg"><label>付款人</label><select id="epayer"></select></div>
+    <div class="fg"><label>第幾天</label><select id="edaysel"></select></div>
+  </div>
+  <div class="fg">
+    <label>分擔方式</label>
+    <div class="split-mode">
+      <button id="split-btn-equal" class="on" onclick="setSplitMode('equal')">平均分擔</button>
+      <button id="split-btn-custom" onclick="setSplitMode('custom')">自訂金額</button>
+      <button id="split-btn-pct" onclick="setSplitMode('pct')">自訂比例 %</button>
+    </div>
+    <table class="split-table" id="split-table">
+      <thead><tr><th>參與</th><th>成員</th><th>金額 NZD</th></tr></thead>
+      <tbody id="split-tbody"></tbody>
+    </table>
+    <div style="font-size:11px;color:var(--muted);margin-top:5px">剩餘未分配：<span id="split-remaining" style="font-weight:600;color:#DC2626">0</span> NZD</div>
+  </div>
+  <div class="mfooter">
+    <button class="btn" onclick="closeM('exp')">取消</button>
+    <button class="btn btnp" onclick="saveExp()">儲存費用</button>
+  </div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbxFDqKygXzxl3VXGP50F0ACRa2ypqMX_k7OLaUKP4cewQEHdKBVYNql7lKXjlZcusCkWA/exec';
+const CCLR={nature:'#2C6E49',food:'#C4572A',activity:'#7B5EA7',city:'#1D6FA4'};
+const CLBL={nature:'自然',food:'美食',activity:'活動',city:'城市'};
+const CICO={nature:'🏔',food:'🍽',activity:'🎿',city:'🏙'};
+const DRV={'基督城-湖區':2.5,'基督城-庫克山':3.5,'基督城-皇后鎮':4.5,'基督城-瓦納卡':4,'基督城-峽灣':6.5,'基督城-但尼丁':5.5,'基督城-西海岸':3.5,'湖區-庫克山':1.5,'湖區-皇后鎮':3,'湖區-瓦納卡':2.5,'庫克山-皇后鎮':3,'庫克山-瓦納卡':2.5,'皇后鎮-瓦納卡':1,'皇后鎮-峽灣':2,'皇后鎮-但尼丁':3,'瓦納卡-峽灣':2.5,'峽灣-但尼丁':3.5,'西海岸-皇后鎮':4.5,'西海岸-庫克山':3};
+const PRESETS=[
+  {id:101,name:'基督城市區',region:'基督城',cat:'city',dur:4,cost:0,note:'從台灣飛抵，植物園、大教堂廣場',lat:-43.5321,lng:172.6362},
+  {id:102,name:'特卡波湖',region:'湖區(特卡波/普卡基)',cat:'nature',dur:3,cost:30,note:'星空觀測世界知名；Church of the Good Shepherd必拍',lat:-44.0039,lng:170.4762},
+  {id:103,name:'普卡基湖',region:'湖區(特卡波/普卡基)',cat:'nature',dur:1,cost:0,note:'往庫克山途中湛藍冰川湖，必停拍照',lat:-44.1769,lng:170.1391},
+  {id:104,name:'庫克山國家公園',region:'庫克山',cat:'nature',dur:8,cost:0,note:'Hooker Valley Track健行約3h，建議住一晚',lat:-43.5950,lng:170.1418},
+  {id:105,name:'瓦納卡湖',region:'瓦納卡',cat:'nature',dur:3,cost:0,note:'That Wanaka Tree超好拍，比皇后鎮悠閒',lat:-44.6943,lng:169.1417},
+  {id:106,name:'皇后鎮市區',region:'皇后鎮',cat:'city',dur:4,cost:0,note:'必搭纜車看日落；Fergburger必吃',lat:-45.0312,lng:168.6626},
+  {id:107,name:'天空纜車',region:'皇后鎮',cat:'activity',dur:2,cost:45,note:'頂部景觀餐廳可預訂',lat:-45.0249,lng:168.6540},
+  {id:108,name:'蒂阿瑙',region:'峽灣/蒂阿瑙',cat:'city',dur:4,cost:0,note:'峽灣門戶城市，螢火蟲洞',lat:-45.4144,lng:167.7180},
+  {id:109,name:'米佛峽灣',region:'峽灣/蒂阿瑙',cat:'nature',dur:8,cost:180,note:'提前訂船票！從蒂阿瑙開車約2.5h',lat:-44.6414,lng:167.8974},
+  {id:110,name:'道特弗峽灣',region:'峽灣/蒂阿瑙',cat:'nature',dur:8,cost:250,note:'比米佛更安靜，需搭渡輪+巴士',lat:-45.3260,lng:166.9911},
+  {id:111,name:'Fergburger',region:'皇后鎮',cat:'food',dur:0.5,cost:18,note:'皇后鎮地標漢堡，排隊是常態',lat:-45.0317,lng:168.6611},
+  {id:112,name:'空中跳傘',region:'皇后鎮',cat:'activity',dur:3,cost:350,note:'極限活動，需提前預訂',lat:-45.0180,lng:168.7390},
+  {id:113,name:'但尼丁市區',region:'但尼丁',cat:'city',dur:4,cost:0,note:'蘇格蘭風格城市；奧塔哥半島看企鵝',lat:-45.8795,lng:170.5006},
+  {id:114,name:'法蘭士約瑟夫冰川',region:'西海岸',cat:'nature',dur:3,cost:0,note:'冰川已退縮，近距離需搭直升機',lat:-43.4607,lng:170.1861},
+  {id:115,name:'箭鎮',region:'皇后鎮',cat:'city',dur:2,cost:0,note:'淘金時代百年小鎮，秋天楓葉美',lat:-44.9381,lng:168.8237},
+  {id:116,name:'住宿',region:'其他',cat:'city',dur:8,cost:0,note:'住宿地點（可重複拖入）',lat:null,lng:null},
+];
+
+const G={
+  spots:[],days:[],exps:[],members:[],
+  filt:'all',mkrs:{},map:null,rl:null,
+  plat:null,plng:null,
+  drawerOpen:true,mobSheetOpen:false,mobCurrent:'spots',mobEditMode:false,editExpId:null,
+  dragSid:null,dragStopId:null,dragDayId:null,
+  activeDay:null,splitMode:'equal',editSpotId:null
+};
+
+// ── HELPERS ──
+function rk(r){
+  if(!r)return '';
+  if(r.includes('基督城'))return '基督城';
+  if(r.includes('特卡波')||r.includes('普卡基')||r.includes('湖區'))return '湖區';
+  if(r.includes('庫克'))return '庫克山';
+  if(r.includes('皇后'))return '皇后鎮';
+  if(r.includes('瓦納卡'))return '瓦納卡';
+  if(r.includes('峽灣')||r.includes('蒂阿瑙'))return '峽灣';
+  if(r.includes('但尼丁'))return '但尼丁';
+  if(r.includes('西海岸'))return '西海岸';
+  return r;
+}
+function getDrv(a,b){const ka=rk(a),kb=rk(b);return DRV[ka+'-'+kb]||DRV[kb+'-'+ka]||null;}
+function fmtH(h){if(!h&&h!==0)return '—';if(h<1)return Math.round(h*60)+'分';if(h===Math.floor(h))return h+'h';return Math.floor(h)+'h'+Math.round((h%1)*60)+'m';}
+function esc(s){return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded',function(){
+  G.spots=PRESETS.map(p=>({...p}));
+  G.members=['旅伴A','旅伴B'];
+  rebuildDays();
+  renderAll();
+  if(typeof L!=='undefined'){
+    G.map=L.map('map',{center:[-44.5,169.5],zoom:7});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(G.map);
+    renderMkrs();
+  } else {
+    document.getElementById('map').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:13px;flex-direction:column;gap:8px"><div>🗺</div>地圖載入失敗，請確認網路後重新整理</div>';
+  }
+  loadFromSheets();
+  // init toggle position
+  const tog=document.getElementById('rdtoggle');
+  if(tog)tog.style.right=G.drawerOpen?'340px':'0px';
+});
+
+function renderAll(){renderSpots();renderDays();renderBudget();renderDayFilterBar();if(G.map)renderMkrs();}
+
+// ── PANEL TABS ──
+function ltab(name,btn){
+  document.querySelectorAll('.ltab').forEach(t=>t.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('lsec-spots').style.display=name==='spots'?'flex':'none';
+  document.getElementById('lsec-budget').style.display=name==='budget'?'flex':'none';
+  if(name==='budget')renderBudget();
+}
+function toggleDrawer(){
+  G.drawerOpen=!G.drawerOpen;
+  const drawer=document.getElementById('rdrawer');
+  const toggle=document.getElementById('rdtoggle');
+  drawer.classList.toggle('open',G.drawerOpen);
+  document.getElementById('rtarrow').textContent=G.drawerOpen?'▶':'◀';
+  // shift toggle button to sit at the edge of the drawer
+  if(toggle){toggle.style.right=G.drawerOpen?'340px':'0px';}
+  setTimeout(()=>{if(G.map)G.map.invalidateSize();},260);
+}
+function mobTab(name,btn){
+  const wasOpen=G.mobSheetOpen, wasSame=G.mobCurrent===name;
+  G.mobCurrent=name; G.mobEditMode=false;
+  document.querySelectorAll('.mob-tab').forEach(t=>t.classList.remove('on'));
+  btn.classList.add('on');
+  if(!wasOpen||!wasSame){
+    G.mobSheetOpen=true;
+    document.getElementById('mobsheet').style.height='55vh';
+    const ci=document.getElementById('mob-collapse-icon');if(ci)ci.textContent='▼';
+  } else {
+    G.mobSheetOpen=false;
+    document.getElementById('mobsheet').style.height='0';
+    const ci=document.getElementById('mob-collapse-icon');if(ci)ci.textContent='▲';
+    return;
+  }
+  renderMobSheet();
+}
+function toggleMobSheet(){
+  G.mobSheetOpen=!G.mobSheetOpen;
+  document.getElementById('mobsheet').style.height=G.mobSheetOpen?'55vh':'0';
+  const ci=document.getElementById('mob-collapse-icon');if(ci)ci.textContent=G.mobSheetOpen?'▼':'▲';
+}
+function setMobEditMode(val){G.mobEditMode=val;renderMobSheet();}
+function renderMobSheet(){
+  const el=document.getElementById('mobinner');if(!el)return;
+  if(G.mobCurrent==='spots') renderMobSpots(el);
+  else if(G.mobCurrent==='itinerary') renderMobItinerary(el);
+  else renderMobBudget(el);
+}
+function _mobHeader(title,editLabel){
+  const btn=G.mobEditMode
+    ?`<button class="mob-sheet-btn" onclick="setMobEditMode(false)">完成</button>`
+    :`<button class="mob-sheet-btn primary" onclick="setMobEditMode(true)">${editLabel||'編輯'}</button>`;
+  return `<div class="mob-sheet-header"><div class="mob-sheet-title">${title}</div><div class="mob-sheet-actions">${btn}</div></div>`;
+}
+function renderMobSpots(el){
+  const chips=['all','nature','food','activity','city'].map(f=>`<button class="chip${G.filt===f?' on':''}" onclick="filt('${f}',this);renderMobSheet()" style="font-size:11px;padding:3px 8px">${{all:'全部',nature:'自然',food:'美食',activity:'活動',city:'城市'}[f]}</button>`).join('');
+  const list=G.spots.filter(s=>G.filt==='all'||s.cat===G.filt);
+  const cards=list.map(s=>{
+    const actions=G.mobEditMode
+      ?`<div style="display:flex;gap:5px;flex-shrink:0">
+          <button class="mob-sheet-btn" onclick="editSpot(${s.id})">編輯</button>
+          <button class="mob-sheet-btn" style="color:#DC2626;border-color:#FCA5A5" onclick="deleteSpot(${s.id})">刪除</button>
+        </div>`
+      :`<button class="mob-sheet-btn primary" onclick="focusSpot(${s.id})">地圖</button>`;
+    return `<div class="mob-spot-card">
+      <div class="mob-spot-card-info">
+        <div class="mob-spot-card-name">${CICO[s.cat]} ${esc(s.name)}</div>
+        <div class="mob-spot-card-meta">${esc(s.region)} · ⏱${fmtH(s.dur)}${s.cost?' · NZD '+s.cost:''}</div>
+        ${s.note?`<div class="mob-spot-card-meta">${esc(s.note)}</div>`:''}
+      </div>${actions}
+    </div>`;
+  }).join('');
+  const addBtn=G.mobEditMode?`<button class="mob-add-btn" onclick="openM('spot')">＋ 新增景點</button>`:'';
+  el.innerHTML=_mobHeader('🗺 景點庫')+
+    `<div style="padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap">${chips}</div>`+
+    `<div>${cards||'<div class="empty" style="padding:20px">尚無景點</div>'}</div>`+addBtn;
+}
+function renderMobItinerary(el){
+  let content='';
+  if(!G.days.length){content='<div class="empty" style="padding:20px">尚無天數</div>';}
+  else if(G.mobEditMode){
+    content=G.days.map(day=>{
+      const sh=day.stops.reduce((a,s)=>a+(s.dur||0),0);
+      const dh=calcDrv(day);const th=sh+dh;const ov=th>12;
+      return `<div class="mob-edit-day" id="day${day.id}"
+        ondragover="onDayOver(event,${day.id})"
+        ondragleave="onDayLeave(event,${day.id})"
+        ondrop="onDayDrop(event,${day.id})">
+        <div class="mob-edit-dh">
+          <span style="font-size:12px;font-weight:600;color:var(--accent)">第 ${day.num} 天${day.date?' · '+day.date:''}</span>
+          <span style="flex:1;font-size:11px;color:var(--muted);margin-left:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${dayReg(day)}</span>
+          <span style="font-size:11px;${ov?'color:#DC2626':'color:var(--muted)'}">⏱${fmtH(th)}${ov?' ⚠':''}</span>
+        </div>
+        <div class="mob-edit-dbody">${day.stops.length?renderStopsHTML(day):'<div class="mob-edit-drop">拖曳景點至此</div>'}</div>
+      </div>`;
+    }).join('')+`<button class="mob-add-btn" onclick="addDay();renderMobSheet()">＋ 新增天數</button>`;
+  } else {
+    content='<div class="mob-preview">'+G.days.filter(d=>d.stops.length).map(day=>{
+      const sh=day.stops.reduce((a,s)=>a+(s.dur||0),0);
+      const dh=calcDrv(day);
+      const rows=day.stops.map((st,i)=>{
+        const sp=G.spots.find(x=>x.id===+st.sid); // coerce sid to number
+        const clr=sp?CCLR[sp.cat]:'#888';
+        const dt=st.startTime||computeTime(day,i);
+        let drv='';
+        if(i<day.stops.length-1&&sp){const nx=G.spots.find(x=>x.id===+day.stops[i+1].sid);if(nx){const d=getDrv(sp.region,nx.region);if(d)drv=`<div class="mob-drive-preview">🚗 開車約 ${fmtH(d)}</div>`;}}
+        return `<div class="mob-stop-preview">
+          <div class="mob-stop-time">${dt}</div>
+          <div style="width:8px;height:8px;border-radius:50%;background:${clr};flex-shrink:0;margin-top:4px"></div>
+          <div class="mob-stop-info">
+            <div class="mob-stop-name">${CICO[sp?sp.cat:'city']} ${esc(st.name)}</div>
+            <div class="mob-stop-note">停留 ${fmtH(st.dur)}${st.note?' · '+esc(st.note):''}</div>
+          </div>
+        </div>${drv}`;
+      }).join('');
+      return `<div class="mob-day-preview">
+        <div class="mob-day-title">第 ${day.num} 天${day.date?' · '+day.date:''} <span style="font-size:11px;font-weight:400;color:var(--muted)">${dayReg(day)} · ⏱${fmtH(sh+dh)}</span></div>
+        ${rows}
+      </div>`;
+    }).join('')+'</div>';
+  }
+  el.innerHTML=_mobHeader('📅 行程安排')+content;
+}
+function renderMobBudget(el){
+  const settlement=calcSettlement();
+  const tot=G.exps.reduce((a,e)=>a+e.amt,0);
+  let content='';
+  if(G.mobEditMode){
+    content=`<div style="padding:10px 14px">${renderBudgetHTML()}</div>`;
+  } else {
+    const rows=settlement.length
+      ?settlement.map(s=>`<div style="display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+          <span style="font-weight:500;color:#DC2626">${esc(s.from)}</span>
+          <span style="color:var(--muted);font-size:11px">需付給</span>
+          <span style="font-weight:500;color:#2C6E49">${esc(s.to)}</span>
+          <span style="margin-left:auto;font-weight:600">NZD ${s.amt.toFixed(0)}</span>
+        </div>`).join('')
+      :'<div style="font-size:13px;color:#2C6E49;padding:8px 0">✅ 目前無需結算</div>';
+    content=`<div class="mob-preview">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">共 ${G.exps.length} 筆費用 · 總計 NZD ${tot.toFixed(0)}</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">結算摘要</div>${rows}
+    </div>`;
+  }
+  el.innerHTML=_mobHeader('💰 分帳')+content;
+}
+
+// ── DAY FILTER BAR ──
+function renderDayFilterBar(){
+  const bar=document.getElementById('day-filter-bar');if(!bar)return;
+  let h='<button class="day-pill'+(G.activeDay===null?' on':'')+'" onclick="setActiveDay(null)">全部</button>';
+  G.days.forEach(d=>{h+=`<button class="day-pill${G.activeDay===d.id?' on':''}" onclick="setActiveDay(${d.id})">第${d.num}天${d.date?' '+d.date:''}</button>`;});
+  bar.innerHTML=h;
+}
+function setActiveDay(dayId){
+  G.activeDay=dayId;
+  document.querySelectorAll('.day-block').forEach(b=>b.classList.remove('active-day'));
+  if(dayId)document.getElementById('day'+dayId)?.classList.add('active-day');
+  renderDayFilterBar();
+  if(G.map)renderMkrs();
+}
+
+// ── SPOTS ──
+function filt(f,btn){
+  G.filt=f;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  btn.classList.add('on');
+  renderSpots();
+}
+function renderSpotsHTML(){
+  const list=G.spots.filter(s=>G.filt==='all'||s.cat===G.filt);
+  if(!list.length)return '<div class="empty"><div class="empty-icon">📍</div>尚無景點</div>';
+  return list.map(s=>`
+    <div class="sc" id="sc${s.id}" onclick="focusSpot(${s.id})" draggable="true"
+      ondragstart="onSpotDragStart(event,${s.id})" ondragend="onSpotDragEnd()">
+      <div class="sc-top">
+        <div class="scn">${CICO[s.cat]} ${esc(s.name)}</div>
+        <div class="sc-actions">
+          <button class="sc-btn" onclick="event.stopPropagation();editSpot(${s.id})">編輯</button>
+          <button class="sc-btn del" onclick="event.stopPropagation();deleteSpot(${s.id})">刪除</button>
+        </div>
+      </div>
+      <div class="scr">${esc(s.region)}</div>
+      <div class="scm">
+        <span class="tag t${s.cat[0]}">${CLBL[s.cat]}</span>
+        <span class="db">⏱ ${fmtH(s.dur)}</span>
+        ${s.cost?`<span class="db">NZD ${s.cost}</span>`:''}
+        ${!s.lat?'<span class="nc">⚠ 無地圖位置</span>':''}
+      </div>
+      ${s.note?`<div class="scnote">${esc(s.note)}</div>`:''}
+    </div>`).join('');
+}
+function renderSpots(){const el=document.getElementById('slist');if(el)el.innerHTML=renderSpotsHTML();}
+function focusSpot(id){
+  const s=G.spots.find(x=>x.id===id);
+  document.querySelectorAll('.sc').forEach(c=>c.classList.remove('hl'));
+  document.getElementById('sc'+id)?.classList.add('hl');
+  if(!s||!s.lat||!G.map)return;
+  G.map.flyTo([s.lat,s.lng],13,{duration:.7});
+  if(G.mkrs[id])G.mkrs[id].openPopup();
+}
+function deleteSpot(id){
+  if(!confirm('確定刪除此景點？相關行程也會移除。'))return;
+  G.spots=G.spots.filter(s=>s.id!==id);
+  G.days.forEach(d=>{d.stops=d.stops.filter(st=>st.sid!==id);});
+  renderAll();autoSave();
+}
+function editSpot(id){
+  const s=G.spots.find(x=>x.id===id);if(!s)return;
+  G.editSpotId=id;G.plat=s.lat;G.plng=s.lng;
+  document.getElementById('spot-modal-title').textContent='編輯景點';
+  document.getElementById('sname').value=s.name;
+  document.getElementById('sreg').value=s.region;
+  document.getElementById('scat').value=s.cat;
+  document.getElementById('sdursel').value=s.dur;
+  document.getElementById('scost').value=s.cost||'';
+  document.getElementById('snote').value=s.note||'';
+  document.getElementById('sedit-id').value=id;
+  document.getElementById('sres').textContent=s.lat?`✅ 已有座標 (${s.lat.toFixed(4)}, ${s.lng.toFixed(4)})`:'';
+  document.getElementById('sres').className='sres'+(s.lat?' ok':'');
+  document.getElementById('gmres').className='gres2';
+  document.getElementById('gmres').textContent='若要更新位置，可重新匯入或搜尋';
+  document.getElementById('ov-spot').classList.add('on');
+}
+function onSpotDragStart(e,sid){
+  G.dragSid=sid;
+  e.dataTransfer.setData('type','spot');
+  e.dataTransfer.setData('sid',String(sid));
+  e.dataTransfer.effectAllowed='move';
+  setTimeout(()=>document.getElementById('sc'+sid)?.classList.add('dragging'),0);
+}
+function onSpotDragEnd(){
+  document.querySelectorAll('.sc').forEach(c=>c.classList.remove('dragging'));
+  document.querySelectorAll('.drop-hint').forEach(h=>h.classList.remove('active'));
+  document.querySelectorAll('.day-block').forEach(b=>b.classList.remove('dov'));
+}
+
+// ── DAYS ──
+function rebuildDays(){
+  const n=parseInt(document.getElementById('tdays').value)||10;
+  const sv=document.getElementById('tstart').value;
+  const base=sv?new Date(sv):null;
+  const old=[...G.days];
+  G.days=[];
+  for(let i=1;i<=n;i++){
+    const ex=old.find(d=>d.num===i);
+    let ds='';
+    if(base){const d=new Date(base);d.setDate(d.getDate()+i-1);ds=`${d.getMonth()+1}/${d.getDate()}`;}
+    G.days.push(ex?{...ex,date:ds||ex.date}:{id:Date.now()+i,num:i,date:ds,stops:[]});
+  }
+  if(G.activeDay&&!G.days.find(d=>d.id===G.activeDay))G.activeDay=null;
+  renderDays();renderDayFilterBar();if(G.map)renderMkrs();autoSave();
+}
+function addDay(){G.days.push({id:Date.now(),num:G.days.length+1,date:'',stops:[]});renderDays();renderDayFilterBar();}
+function calcDrv(day){
+  let h=0;
+  for(let i=0;i<day.stops.length-1;i++){
+    const a=G.spots.find(x=>x.id===+day.stops[i].sid);
+    const b=G.spots.find(x=>x.id===+day.stops[i+1].sid);
+    if(a&&b){const d=getDrv(a.region,b.region);if(d)h+=d;}
+  }
+  return h;
+}
+function dayReg(day){
+  const rs=[...new Set(day.stops.map(st=>{const s=G.spots.find(x=>x.id===+st.sid);return s?rk(s.region):'';}).filter(Boolean))];
+  return rs.length?rs.join(' → '):'—';
+}
+function computeTime(day,idx){
+  let lastT='09:00',lastI=0;
+  for(let j=idx;j>=0;j--){if(day.stops[j].startTime){lastT=day.stops[j].startTime;lastI=j;break;}}
+  let offMin=0;
+  for(let j=lastI;j<idx;j++){
+    offMin+=Math.round((day.stops[j].dur||0)*60);
+    if(j<day.stops.length-1){
+      const a=G.spots.find(x=>x.id===+day.stops[j].sid);
+      const b=G.spots.find(x=>x.id===+day.stops[j+1].sid);
+      if(a&&b){const d=getDrv(a.region,b.region);if(d)offMin+=Math.round(d*60);}
+    }
+  }
+  const [hh,mm]=lastT.split(':').map(Number);
+  const tot=hh*60+mm+offMin;
+  return `${String(Math.floor(tot/60)%24).padStart(2,'0')}:${String(tot%60).padStart(2,'0')}`;
+}
+function renderStopsHTML(day){
+  return day.stops.map((st,i)=>{
+    const sp=G.spots.find(x=>x.id===+st.sid); // coerce sid to number
+    const clr=sp?CCLR[sp.cat]:'#888';
+    const dispTime=st.startTime||computeTime(day,i);
+    let driveHTML='';
+    if(i<day.stops.length-1&&sp){
+      const nx=G.spots.find(x=>x.id===day.stops[i+1].sid);
+      if(nx){const d=getDrv(sp.region,nx.region);if(d)driveHTML=`<div class="drive-row">🚗 開車約 ${fmtH(d)}</div>`;}
+    }
+    return `<div class="srow" draggable="true"
+      ondragstart="onStopDragStart(event,${day.id},${st.id})"
+      ondragover="event.preventDefault();event.stopPropagation()"
+      ondrop="onStopDrop(event,${day.id},${st.id})">
+      <div class="srow-main">
+        <span class="srow-handle">⠿</span>
+        <div class="sdot2" style="background:${clr}"></div>
+        <div class="srow-name">${CICO[sp?sp.cat:'city']} ${esc(st.name)}</div>
+        <button class="sdel" onclick="rmStop(${day.id},${st.id})">✕</button>
+      </div>
+      <div class="srow-meta">
+        <span class="time-lbl">開始</span>
+        <input class="time-input" type="time" value="${dispTime}"
+          onchange="updateStopTime(${day.id},${st.id},this.value)">
+        <span class="time-lbl">停留</span>
+        <input class="dur-input" type="number" value="${st.dur}" min="0.5" max="48" step="0.5"
+          onchange="updateStopDur(${day.id},${st.id},parseFloat(this.value)||0.5)">
+        <span class="time-lbl">h</span>
+      </div>
+      <input class="stop-note-input" type="text" value="${esc(st.note||'')}" placeholder="備註（集合地點、票券資訊…）"
+        onchange="updateStopNote(${day.id},${st.id},this.value)">
+    </div>${driveHTML}`;
+  }).join('');
+}
+function renderDaysHTML(){
+  if(!G.days.length)return '<div class="empty"><div class="empty-icon">📅</div>尚無天數</div>';
+  return G.days.map(day=>{
+    const sh=day.stops.reduce((a,s)=>a+(s.dur||0),0);
+    const dh=calcDrv(day);const th=sh+dh;const ov=th>12;
+    const isActive=G.activeDay===day.id;
+    return `<div class="day-block${isActive?' active-day':''}" id="day${day.id}"
+      ondragover="onDayOver(event,${day.id})"
+      ondragleave="onDayLeave(event,${day.id})"
+      ondrop="onDayDrop(event,${day.id})">
+      <div class="dh" onclick="setActiveDay(${isActive?'null':day.id})">
+        <span class="dnum">第 ${day.num} 天${day.date?' · '+day.date:''}</span>
+        <span class="dtit">${dayReg(day)}</span>
+        <span class="dtt${ov?' over':''}">⏱ ${fmtH(th)}${ov?' ⚠':''}</span>
+      </div>
+      <div class="dbody">
+        ${day.stops.length?renderStopsHTML(day):''}
+        <div class="drop-hint" id="drophint${day.id}">拖曳景點至此</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderDays(){const el=document.getElementById('dcon');if(el)el.innerHTML=renderDaysHTML();}
+function updateStopTime(dayId,stopId,val){const day=G.days.find(d=>d.id===dayId);const st=day?.stops.find(s=>s.id===stopId);if(st){st.startTime=val;renderDays();autoSave();}}
+function updateStopDur(dayId,stopId,val){const day=G.days.find(d=>d.id===dayId);const st=day?.stops.find(s=>s.id===stopId);if(st){st.dur=val;renderDays();autoSave();}}
+function updateStopNote(dayId,stopId,val){const day=G.days.find(d=>d.id===dayId);const st=day?.stops.find(s=>s.id===stopId);if(st){st.note=val;autoSave();}}
+function onDayOver(e,dayId){e.preventDefault();document.getElementById('day'+dayId)?.classList.add('dov');document.getElementById('drophint'+dayId)?.classList.add('active');}
+function onDayLeave(e,dayId){const block=document.getElementById('day'+dayId);if(block&&!block.contains(e.relatedTarget)){block.classList.remove('dov');document.getElementById('drophint'+dayId)?.classList.remove('active');}}
+function onDayDrop(e,dayId){
+  e.preventDefault();
+  document.getElementById('day'+dayId)?.classList.remove('dov');
+  document.getElementById('drophint'+dayId)?.classList.remove('active');
+  if(e.dataTransfer.getData('type')==='spot'){
+    const sid=parseInt(e.dataTransfer.getData('sid'));
+    const spot=G.spots.find(x=>x.id===sid);
+    const day=G.days.find(d=>d.id===dayId);
+    if(!spot||!day)return;
+    day.stops.push({id:Date.now(),sid,name:spot.name,dur:spot.dur,startTime:'',note:''});
+    renderAll();autoSave();
+  }
+}
+function onStopDragStart(e,dayId,stopId){
+  G.dragDayId=dayId;G.dragStopId=stopId;
+  e.dataTransfer.setData('type','stop');
+  e.dataTransfer.setData('stopId',String(stopId));
+  e.dataTransfer.effectAllowed='move';
+  e.stopPropagation();
+}
+function onStopDrop(e,dayId,stopId){
+  e.preventDefault();e.stopPropagation();
+  if(e.dataTransfer.getData('type')!=='stop')return;
+  if(G.dragStopId===null||G.dragDayId!==dayId||G.dragStopId===stopId)return;
+  const day=G.days.find(d=>d.id===dayId);if(!day)return;
+  const fi=day.stops.findIndex(s=>s.id===G.dragStopId);
+  const ti=day.stops.findIndex(s=>s.id===stopId);
+  if(fi<0||ti<0)return;
+  const[item]=day.stops.splice(fi,1);day.stops.splice(ti,0,item);
+  G.dragStopId=null;G.dragDayId=null;
+  renderAll();autoSave();
+}
+function rmStop(dayId,stopId){
+  const day=G.days.find(d=>d.id===dayId);if(!day)return;
+  day.stops=day.stops.filter(s=>s.id!==stopId);
+  renderAll();autoSave();
+}
+
+// ── MARKERS ──
+function mkIcon(cat,faded){
+  return L.divIcon({
+    html:`<div style="width:28px;height:28px;border-radius:50%;background:${CCLR[cat]};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:13px;opacity:${faded?'0.25':'1'}">${CICO[cat]}</div>`,
+    className:'',iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-18]
+  });
+}
+function renderMkrs(){
+  if(!G.map)return;
+  Object.values(G.mkrs).forEach(m=>G.map.removeLayer(m));G.mkrs={};
+  if(G.rl){G.map.removeLayer(G.rl);G.rl=null;}
+  const activeIds=G.activeDay?new Set(G.days.find(d=>d.id===G.activeDay)?.stops.map(st=>st.sid)||[]):null;
+  G.spots.filter(s=>s.lat&&s.lng).forEach(s=>{
+    const faded=activeIds!==null&&!activeIds.has(s.id);
+    const m=L.marker([s.lat,s.lng],{icon:mkIcon(s.cat,faded)}).addTo(G.map).bindPopup(mkPop(s));
+    G.mkrs[s.id]=m;
+    m.on('click',()=>{document.querySelectorAll('.sc').forEach(c=>c.classList.remove('hl'));document.getElementById('sc'+s.id)?.classList.add('hl');});
+  });
+  const targetDays=G.activeDay?G.days.filter(d=>d.id===G.activeDay):G.days;
+  const coords=targetDays.flatMap(d=>d.stops.map(st=>{const sp=G.spots.find(x=>x.id===+st.sid);return sp&&sp.lat?[sp.lat,sp.lng]:null;}).filter(Boolean));
+  if(coords.length>1)G.rl=L.polyline(coords,{color:'#2C6E49',weight:2.5,opacity:.6,dashArray:'6,5'}).addTo(G.map);
+  if(G.activeDay&&coords.length>0)G.map.fitBounds(coords.length===1?L.latLngBounds([coords[0],coords[0]]).pad(0.5):coords,{padding:[40,40],maxZoom:13});
+}
+function mkPop(s){
+  return `<div style="min-width:160px">
+    <div style="font-weight:600;font-size:14px;margin-bottom:3px">${CICO[s.cat]} ${esc(s.name)}</div>
+    <div style="font-size:11px;color:#777;margin-bottom:2px">${esc(s.region)} · ⏱${fmtH(s.dur)}</div>
+    ${s.cost?`<div style="font-size:11px;color:#777">預估 NZD ${s.cost}/人</div>`:''}
+    ${s.note?`<div style="font-size:11px;color:#555;margin-top:3px;line-height:1.4">${esc(s.note)}</div>`:''}
+  </div>`;
+}
+
+// ── BUDGET / SPLITWISE ──
+function renderBudgetHTML(){
+  const members=G.members;
+  const exps=G.exps;
+  // member section
+  let mHTML=`<div class="member-section">
+    <h4>👥 旅伴名單</h4>
+    <div class="member-list">${members.map((m,i)=>`<div class="member-tag">${esc(m)}<button class="member-del" onclick="delMember(${i})">✕</button></div>`).join('')}</div>
+    <div class="member-add-row">
+      <input type="text" id="new-member-input" placeholder="新增旅伴名稱" onkeydown="if(event.key==='Enter')addMember()">
+      <button onclick="addMember()">＋ 新增</button>
+    </div>
+  </div>`;
+  // expense list
+  let eHTML=`<div class="expense-section">
+    <h4>💳 費用紀錄</h4>
+    ${exps.length?exps.map(e=>{
+      const splitsDesc=Object.entries(e.splits||{}).filter(([,v])=>v>0).map(([k,v])=>`<span class="ei-split-chip">${esc(k)}: NZD ${v.toFixed(0)}</span>`).join('');
+      return `<div class="ei">
+        <div class="ei-top">
+          <div class="ei-name">${esc(e.name)}</div>
+          <span class="ei-payer">💰 ${esc(e.payer)}</span>
+          <div class="ei-amt">NZD ${e.amt.toFixed(0)}</div>
+          <button class="ei-del" onclick="editExp(${e.id})" style="color:#1D6FA4;margin-right:2px" title="編輯">✏️</button>
+          <button class="ei-del" onclick="delExp(${e.id})">✕</button>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${e.day}</div>
+        <div class="ei-splits">${splitsDesc}</div>
+      </div>`;
+    }).join(''):'<div class="empty" style="padding:12px">尚無費用紀錄</div>'}
+    <button class="adde" onclick="openM(\'exp\')">＋ 新增費用</button>
+  </div>`;
+  // settlement
+  const settlement=calcSettlement();
+  let sHTML=`<div class="settle-section">
+    <h4>🧾 結算：誰該付給誰</h4>
+    ${settlement.length?settlement.map(s=>`<div class="settle-row">
+      <span class="settle-from">${esc(s.from)}</span>
+      <span style="color:var(--muted);font-size:11px">需付給</span>
+      <span class="settle-to">${esc(s.to)}</span>
+      <span class="settle-amt">NZD ${s.amt.toFixed(0)}</span>
+    </div>`).join(''):'<div style="font-size:12px;color:var(--muted);padding:4px 0">目前無需結算 ✅</div>'}
+  </div>`;
+  return mHTML+eHTML+sHTML;
+}
+function renderBudget(){
+  const el=document.getElementById('bpanel');if(!el)return;
+  el.innerHTML=renderBudgetHTML();
+}
+function addMember(){
+  const inp=document.getElementById('new-member-input');if(!inp)return;
+  const name=inp.value.trim();if(!name)return;
+  if(G.members.includes(name)){alert('已有同名旅伴');return;}
+  G.members.push(name);inp.value='';
+  renderBudget();if(G.mobSheetOpen&&G.mobCurrent==='budget')renderMobSheet();autoSave();
+}
+function delMember(idx){
+  if(!confirm(`確定移除 ${G.members[idx]}？`))return;
+  G.members.splice(idx,1);
+  renderBudget();if(G.mobSheetOpen&&G.mobCurrent==='budget')renderMobSheet();autoSave();
+}
+function delExp(id){if(!confirm('確定刪除此費用？'))return;G.exps=G.exps.filter(e=>e.id!==id);renderBudget();if(G.mobSheetOpen&&G.mobCurrent==='budget')renderMobSheet();autoSave();}
+function editExp(id){
+  const e=G.exps.find(x=>x.id===id);if(!e)return;
+  G.editExpId=id;  // set BEFORE openExpModal so title shows correctly
+  // Build the modal options first (same as openExpModal does)
+  splitData={};
+  G.members.forEach(m=>splitData[m]={checked:true,val:0});
+  G.splitMode='custom';
+  document.getElementById('epayer').innerHTML=G.members.map(m=>`<option>${m}</option>`).join('');
+  document.getElementById('edaysel').innerHTML=G.days.map(d=>`<option>第${d.num}天${d.date?' ('+d.date+')':''}</option>`).join('');
+  // Fill with existing values
+  document.getElementById('ename').value=e.name;
+  document.getElementById('eamt').value=e.amt;
+  [...document.getElementById('epayer').options].forEach(o=>{o.selected=o.text===e.payer;});
+  [...document.getElementById('edaysel').options].forEach(o=>{o.selected=o.text===e.day;});
+  // Restore splits
+  G.members.forEach(m=>{splitData[m]={checked:!!(e.splits&&e.splits[m]>0),val:(e.splits&&e.splits[m])||0};});
+  ['equal','custom','pct'].forEach(m=>document.getElementById('split-btn-'+m)?.classList.toggle('on',m==='custom'));
+  renderSplitTable();
+  // Show modal
+  document.getElementById('exp-modal-title').textContent='編輯費用';
+  document.getElementById('ov-exp').classList.add('on');
+}
+
+// settlement algorithm: minimize transactions
+function calcSettlement(){
+  const bal={};
+  G.members.forEach(m=>bal[m]=0);
+  G.exps.forEach(e=>{
+    if(bal[e.payer]===undefined)bal[e.payer]=0;
+    bal[e.payer]+=e.amt;
+    Object.entries(e.splits||{}).forEach(([k,v])=>{
+      if(bal[k]===undefined)bal[k]=0;
+      bal[k]-=v;
+    });
+  });
+  // greedy settle
+  const creditors=[],debtors=[];
+  Object.entries(bal).forEach(([k,v])=>{
+    if(v>0.5)creditors.push({name:k,amt:v});
+    else if(v<-0.5)debtors.push({name:k,amt:-v});
+  });
+  const txns=[];
+  let ci=0,di=0;
+  while(ci<creditors.length&&di<debtors.length){
+    const pay=Math.min(creditors[ci].amt,debtors[di].amt);
+    if(pay>0.5)txns.push({from:debtors[di].name,to:creditors[ci].name,amt:pay});
+    creditors[ci].amt-=pay;debtors[di].amt-=pay;
+    if(creditors[ci].amt<0.5)ci++;
+    if(debtors[di].amt<0.5)di++;
+  }
+  return txns;
+}
+
+// ── EXPENSE MODAL (split) ──
+let splitData={};
+function setSplitMode(mode){
+  G.splitMode=mode;
+  ['equal','custom','pct'].forEach(m=>document.getElementById('split-btn-'+m)?.classList.toggle('on',m===mode));
+  if(mode==='equal')autoSplitEqual();
+  else renderSplitTable();
+}
+function autoSplitEqual(){
+  if(G.splitMode!=='equal')return;
+  const amt=parseFloat(document.getElementById('eamt')?.value)||0;
+  const checked=Object.entries(splitData).filter(([,v])=>v.checked).map(([k])=>k);
+  const n=checked.length||G.members.length;
+  const share=n>0?Math.round((amt/n)*100)/100:0;
+  G.members.forEach(m=>{if(!splitData[m])splitData[m]={checked:true,val:0};splitData[m].val=splitData[m].checked?share:0;});
+  renderSplitTable();
+}
+function renderSplitTable(){
+  const amt=parseFloat(document.getElementById('eamt')?.value)||0;
+  const tbody=document.getElementById('split-tbody');if(!tbody)return;
+  tbody.innerHTML=G.members.map(m=>{
+    if(!splitData[m])splitData[m]={checked:true,val:0};
+    const sd=splitData[m];
+    const val=G.splitMode==='pct'?((sd.val/amt*100)||0).toFixed(1):sd.val.toFixed(2);
+    return `<tr>
+      <td><input type="checkbox" class="split-check" ${sd.checked?'checked':''} onchange="toggleSplit('${m}',this.checked)"></td>
+      <td>${esc(m)}</td>
+      <td><input class="split-input" type="number" value="${val}" min="0" step="${G.splitMode==='pct'?'1':'0.01'}"
+        onchange="updateSplit('${m}',parseFloat(this.value)||0)" ${!sd.checked?'disabled':''}></td>
+    </tr>`;
+  }).join('');
+  updateRemaining();
+}
+function toggleSplit(member,checked){
+  if(!splitData[member])splitData[member]={checked:true,val:0};
+  splitData[member].checked=checked;
+  if(!checked)splitData[member].val=0;
+  if(G.splitMode==='equal')autoSplitEqual();
+  else renderSplitTable();
+}
+function updateSplit(member,val){
+  if(!splitData[member])splitData[member]={checked:true,val:0};
+  if(G.splitMode==='pct'){const amt=parseFloat(document.getElementById('eamt')?.value)||0;splitData[member].val=Math.round(amt*val/100*100)/100;}
+  else splitData[member].val=val;
+  updateRemaining();
+}
+function updateRemaining(){
+  const amt=parseFloat(document.getElementById('eamt')?.value)||0;
+  const used=Object.values(splitData).reduce((a,v)=>a+(v.checked?v.val:0),0);
+  const rem=Math.round((amt-used)*100)/100;
+  const el=document.getElementById('split-remaining');
+  if(el){el.textContent=rem.toFixed(2);el.style.color=Math.abs(rem)<0.1?'#2C6E49':'#DC2626';}
+}
+function openExpModal(){
+  // Note: G.editExpId is set BEFORE calling this when editing; don't reset it here
+  const t=document.getElementById('exp-modal-title');if(t)t.textContent=G.editExpId?'編輯費用':'新增費用';
+  splitData={};
+  G.members.forEach(m=>splitData[m]={checked:true,val:0});
+  G.splitMode='equal';
+  ['equal','custom','pct'].forEach(m=>document.getElementById('split-btn-'+m)?.classList.toggle('on',m==='equal'));
+  document.getElementById('epayer').innerHTML=G.members.map(m=>`<option>${esc(m)}</option>`).join('');
+  document.getElementById('edaysel').innerHTML=G.days.map(d=>`<option>第${d.num}天${d.date?' ('+d.date+')':''}</option>`).join('');
+  autoSplitEqual();
+}
+function saveExp(){
+  const name=document.getElementById('ename').value.trim();
+  const amt=parseFloat(document.getElementById('eamt').value);
+  if(!name||!amt){alert('請填寫項目與金額');return;}
+  const splits={};
+  Object.entries(splitData).forEach(([k,v])=>{if(v.checked&&v.val>0)splits[k]=v.val;});
+  if(G.editExpId){
+    const e=G.exps.find(x=>x.id===G.editExpId);
+    if(e){Object.assign(e,{name,amt,payer:document.getElementById('epayer').value,day:document.getElementById('edaysel').value,splits});}
+    G.editExpId=null;
+  } else {
+    G.exps.push({id:Date.now(),name,amt,payer:document.getElementById('epayer').value,day:document.getElementById('edaysel').value,splits});
+  }
+  closeM('exp');['ename','eamt'].forEach(id=>document.getElementById(id).value='');
+  renderBudget();if(G.mobSheetOpen&&G.mobCurrent==='budget')renderMobSheet();autoSave();
+}
+
+// ── MODALS ──
+function openM(m){
+  if(m==='exp'){G.editExpId=null;openExpModal();}
+  if(m==='spot'){G.editSpotId=null;G.plat=null;G.plng=null;document.getElementById('spot-modal-title').textContent='新增景點';document.getElementById('sedit-id').value='';}
+  document.getElementById('ov-'+m).classList.add('on');
+}
+function closeM(m){
+  document.getElementById('ov-'+m).classList.remove('on');
+  if(m==='spot'){
+    ['sname','snote','scost','gmurl'].forEach(id=>document.getElementById(id).value='');
+    const sr=document.getElementById('sres');if(sr){sr.textContent='';sr.className='sres';}
+    const gr=document.getElementById('gmres');if(gr){gr.className='gres2';gr.innerHTML='💡 Google Maps 開啟景點 → 複製瀏覽器網址列完整網址貼入';}
+    G.plat=null;G.plng=null;G.editSpotId=null;
+  }
+}
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('on');}));
+
+async function importGmap(){
+  const raw=document.getElementById('gmurl').value.trim();
+  const el=document.getElementById('gmres');
+  if(!raw){el.textContent='請貼入網址';el.className='gres2 err';return;}
+  el.textContent='解析中…';el.className='gres2 ing';
+  let lat=null,lng=null,name='';
+  let m=raw.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if(m){lat=parseFloat(m[1]);lng=parseFloat(m[2]);}
+  if(!lat){m=raw.match(/!3d(-?\d+\.\d+).*?!4d(-?\d+\.\d+)/);if(m){lat=parseFloat(m[1]);lng=parseFloat(m[2]);}}
+  const nm=raw.match(/\/place\/([^/@?]+)/);
+  if(nm)name=decodeURIComponent(nm[1].replace(/\+/g,' '));
+  if(lat&&lng){
+    G.plat=lat;G.plng=lng;
+    if(name&&!document.getElementById('sname').value)document.getElementById('sname').value=name;
+    try{
+      const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=zh`);
+      const d=await r.json();
+      const n=d.name||d.display_name?.split(',')[0]||name;
+      if(!document.getElementById('sname').value)document.getElementById('sname').value=n;
+      el.textContent=`✅ 找到：${n} (${lat.toFixed(4)}, ${lng.toFixed(4)})`;el.className='gres2 ok';
+    }catch(e){el.textContent=`✅ 座標已取得 (${lat.toFixed(4)}, ${lng.toFixed(4)})`;el.className='gres2 ok';}
+    if(G.map)G.map.flyTo([lat,lng],14,{duration:.7});
+  } else if(raw.includes('maps.app.goo.gl')){
+    el.innerHTML='⚠ 短連結無法解析。請在 Google Maps 點開景點 → 複製<b>瀏覽器網址列的長網址</b>貼入';
+    el.className='gres2 err';
+  } else {
+    el.textContent='❌ 找不到座標，請確認是完整的 Google Maps 網址';el.className='gres2 err';
+  }
+}
+async function geocode(){
+  const q=document.getElementById('sname').value.trim();if(!q)return;
+  const el=document.getElementById('sres');
+  el.textContent='搜尋中…';el.className='sres ing';
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+' New Zealand')}&format=json&limit=1&accept-language=zh`);
+    const d=await r.json();
+    if(!d.length){el.textContent='找不到，請嘗試英文名稱或貼 Google Maps 網址';el.className='sres err';return;}
+    G.plat=parseFloat(d[0].lat);G.plng=parseFloat(d[0].lon);
+    el.textContent=`✅ ${d[0].display_name.split(',').slice(0,2).join(',')}`;el.className='sres ok';
+    if(G.map)G.map.flyTo([G.plat,G.plng],13,{duration:.7});
+  }catch(e){el.textContent='搜尋失敗，請確認網路';el.className='sres err';}
+}
+function saveSpot(){
+  const name=document.getElementById('sname').value.trim();if(!name){alert('請輸入景點名稱');return;}
+  const data={name,region:document.getElementById('sreg').value,cat:document.getElementById('scat').value,dur:parseFloat(document.getElementById('sdursel').value),cost:parseFloat(document.getElementById('scost').value)||0,note:document.getElementById('snote').value,lat:G.plat,lng:G.plng};
+  if(G.editSpotId){
+    const s=G.spots.find(x=>x.id===G.editSpotId);if(s)Object.assign(s,data);
+  } else {
+    G.spots.push({id:Date.now(),...data});
+  }
+  closeM('spot');renderAll();autoSave();
+}
+
+// ── SYNC ──
+function setSt(cls,lbl){document.getElementById('sdot').className='sdot'+(cls?' '+cls:'');document.getElementById('slbl').textContent=lbl;}
+let saveTimer=null;
+function autoSave(){clearTimeout(saveTimer);saveTimer=setTimeout(push,1500);}
+function push(){
+  setSt('ing','儲存中…');
+  const customSpots=G.spots.filter(s=>!PRESETS.find(p=>p.id===s.id));
+  const pl={customSpots,days:G.days,exps:G.exps,members:G.members,tripDays:document.getElementById('tdays').value,tripStart:document.getElementById('tstart').value};
+  fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'save',payload:{key:'nz_data',value:pl}})})
+    .then(r=>r.json())
+    .then(()=>setSt('ok','已同步 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})))
+    .catch(()=>setSt('err','同步失敗'));
+}
+function loadFromSheets(){
+  setSt('ing','載入中…');
+  fetch(SCRIPT_URL).then(r=>r.json()).then(data=>{
+    const d=data.nz_data;
+    if(!d||typeof d!=='object'||(!d.days&&!d.customSpots&&!d.exps)){setSt('ok','已連線');return;}
+    if(d.tripDays)document.getElementById('tdays').value=d.tripDays;
+    if(d.tripStart)document.getElementById('tstart').value=d.tripStart;
+    if(d.members&&d.members.length)G.members=d.members;
+    if(d.customSpots&&d.customSpots.length)d.customSpots.forEach(sp=>{if(!G.spots.find(x=>x.id===sp.id))G.spots.push(sp);});
+    if(d.days&&d.days.length)G.days=d.days;
+    if(d.exps&&d.exps.length)G.exps=d.exps;
+    renderAll();
+    setSt('ok','已載入 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
+  }).catch(()=>setSt('err','載入失敗，請確認網路'));
+}
+</script>
+</body>
+</html>
