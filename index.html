@@ -559,23 +559,33 @@ function fbRef(path){ return window._FB?.ref(fbDb(), path); }
 
 // Save data to Firebase path
 async function fbSet(path, value){
-  if(!window._FB) throw new Error('Firebase not ready');
+  await waitForFB();
   await window._FB.set(fbRef(path), value);
+}
+
+// Wait for Firebase to be ready
+function waitForFB(timeout=10000){
+  if(window._FB) return Promise.resolve();
+  return new Promise((resolve,reject)=>{
+    const t=setTimeout(()=>reject(new Error('Firebase timeout')),timeout);
+    document.addEventListener('firebase-ready',()=>{clearTimeout(t);resolve();},{once:true});
+  });
 }
 
 // Get data from Firebase path once
 async function fbGet(path){
-  if(!window._FB) throw new Error('Firebase not ready');
+  await waitForFB();
   const snap = await window._FB.get(fbRef(path));
   return snap.exists() ? snap.val() : null;
 }
 
 // Listen to Firebase path for real-time updates
 function fbListen(path, callback){
-  if(!window._FB) return;
-  window._FB.onValue(fbRef(path), snap => {
-    callback(snap.exists() ? snap.val() : null);
-  });
+  waitForFB().then(()=>{
+    window._FB.onValue(fbRef(path), snap => {
+      callback(snap.exists() ? snap.val() : null);
+    });
+  }).catch(()=>{});
 }
 
 // Robust fetch with timeout (kept for compatibility)
@@ -764,7 +774,7 @@ function esc(s){return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 // ── INIT ──
 document.addEventListener('DOMContentLoaded',function(){
-  G.spots=PRESETS.map(p=>({...p}));
+  G.spots=[]; // start empty, filled when project is opened
   G.members=['旅伴A','旅伴B'];
   renderAll();
   // Wait for Firebase then load projects
@@ -1889,8 +1899,8 @@ function openProject(projId){
   if(!proj)return;
   G_PROJ.current=proj;
   G._currentProjKey=projDataKey(projId);
-  // reset state
-  G.spots=PRESETS.map(p=>({...p}));
+  // reset state - empty spots, no presets
+  G.spots=[];
   G.days=[];G.exps=[];G.members=['旅伴A','旅伴B'];G.driveCache={};G._lastLoadedStops=0;G._mobDay=1;
   // update topbar
   document.getElementById('proj-title').textContent=proj.name;
@@ -1899,6 +1909,17 @@ function openProject(projId){
   // DON'T rebuildDays or autoSave yet — wait for Sheets data first
   hideProjScreen();
   setSt('ing','載入中…');
+  // reset map to destination center
+  if(G.map){
+    const dest=(proj.destination||'').toLowerCase();
+    let center=[-44.5,169.5],zoom=7; // default NZ
+    if(dest.includes('日本'))     {center=[35.6762,139.6503];zoom=6;}
+    else if(dest.includes('泰國')) {center=[13.7563,100.5018];zoom=6;}
+    else if(dest.includes('韓國')) {center=[37.5665,126.9780];zoom=7;}
+    else if(dest.includes('歐洲')) {center=[48.8566,2.3522];zoom=5;}
+    else if(dest.includes('紐西蘭')){center=[-44.5,169.5];zoom=7;}
+    G.map.setView(center,zoom);
+  }
   fbGet('data/'+G._currentProjKey.replace(/[.#$[\]]/g,'_'))
     .then(d=>{
       if(d&&typeof d==='object'&&(d.days||d.customSpots||d.exps)){
@@ -1914,9 +1935,20 @@ function openProject(projId){
       renderAll();
       if(isMobile())renderMobContent();
       G.days.forEach(day=>fetchDayDriveTimes(day));
+      // set up real-time listener for other users' changes
+      if(G._fbUnlisten)G._fbUnlisten(); // remove previous listener
+      const listenKey='data/'+G._currentProjKey.replace(/[.#$[\]]/g,'_');
+      fbListen(listenKey,(data)=>{
+        if(!data||!G_PROJ.current)return;
+        if(data.savedAt&&data.savedAt===G._lastSavedAt)return; // skip own saves
+        applyLoadedData(data);
+        G._lastLoadedStops=G.days.reduce((a,d)=>a+d.stops.length,0);
+        renderAll();
+        if(isMobile())renderMobContent();
+        setSt('ok','已同步（即時）');
+      });
     })
     .catch(()=>{
-      // fetch failed, build fresh but don't save
       rebuildDays();
       renderAll();
       if(isMobile())renderMobContent();
