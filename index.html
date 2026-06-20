@@ -777,25 +777,9 @@ document.addEventListener('DOMContentLoaded',function(){
   G.spots=[]; // start empty, filled when project is opened
   G.members=['旅伴A','旅伴B'];
   renderAll();
-  // Wait for Firebase then load projects and auto-reopen last project
+  // Wait for Firebase then load project list
   function onFirebaseReady(){
-    loadProjects();
-    // auto-reopen last project
-    const lastProjId=localStorage.getItem('lastProjId');
-    if(lastProjId){
-      // wait a bit for project list to load
-      setTimeout(async ()=>{
-        if(G_PROJ.projects.length===0){
-          // projects not loaded yet, try to load first
-          try{
-            const data=await fbGet('data/'+PROJECTS_KEY);
-            G_PROJ.projects=Array.isArray(data)?data:[];
-          }catch(e){}
-        }
-        const proj=G_PROJ.projects.find(p=>p.id===lastProjId);
-        if(proj) openProject(lastProjId);
-      },800);
-    }
+    loadProjects(); // load project list in background
   }
   if(window._FB_READY){
     onFirebaseReady();
@@ -1104,15 +1088,17 @@ function rebuildDays(){
 function addDay(){G.days.push({id:Date.now(),num:G.days.length+1,date:'',stops:[]});renderDays();renderDayFilterBar();}
 function calcDrv(day){
   let h=0;
-  for(let i=0;i<day.stops.length-1;i++){
-    const a=G.spots.find(x=>x.id===+day.stops[i].sid);
-    const b=G.spots.find(x=>x.id===+day.stops[i+1].sid);
+  const stops=Array.isArray(day.stops)?day.stops:[];
+  for(let i=0;i<stops.length-1;i++){
+    const a=G.spots.find(x=>x.id===+stops[i].sid);
+    const b=G.spots.find(x=>x.id===+stops[i+1].sid);
     if(a&&b){const d=getDriveTime(a,b);if(d)h+=d;}
   }
   return h;
 }
 function dayReg(day){
-  const rs=[...new Set(day.stops.map(st=>{const s=G.spots.find(x=>x.id===+st.sid);return s?rk(s.region):'';}).filter(Boolean))];
+  const stops=Array.isArray(day.stops)?day.stops:[];
+  const rs=[...new Set(stops.map(st=>{const s=G.spots.find(x=>x.id===+st.sid);return s?rk(s.region):'';}).filter(Boolean))];
   return rs.length?rs.join(' → '):'—';
 }
 function computeTime(day,idx){
@@ -1171,7 +1157,8 @@ function renderStopsHTML(day){
 function renderDaysHTML(){
   if(!G.days.length)return '<div class="empty"><div class="empty-icon">📅</div>尚無天數</div>';
   return G.days.map(day=>{
-    const sh=day.stops.reduce((a,s)=>a+(s.dur||0),0);
+    const stops=Array.isArray(day.stops)?day.stops:[];
+    const sh=stops.reduce((a,s)=>a+(s.dur||0),0);
     const dh=calcDrv(day);const th=sh+dh;const ov=th>12;
     const isActive=G.activeDay===day.id;
     return `<div class="day-block${isActive?' active-day':''}" id="day${day.id}"
@@ -1842,10 +1829,14 @@ function applyLoadedData(d){
   if(customSpots.length)customSpots.forEach(sp=>{
     if(!G.spots.find(x=>x.id===+sp.id))G.spots.push({...sp,id:+sp.id,custom:true});
   });
-  if(d.days&&d.days.length)G.days=d.days;
+  if(d.days&&d.days.length){
+    G.days=d.days.map(day=>({...day,stops:Array.isArray(day.stops)?day.stops.map(st=>({...st,sid:+st.sid})):[]}));
+  } else {
+    rebuildDays();
+  }
   if(d.exps&&d.exps.length)G.exps=d.exps;
   renderAll();
-  G._lastLoadedStops=G.days.reduce((a,d)=>a+d.stops.length,0);
+  G._lastLoadedStops=G.days.reduce((a,day)=>a+(Array.isArray(day.stops)?day.stops.length:0),0);
 }
 
 
