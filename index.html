@@ -437,10 +437,6 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
     </button>
     <button class="mob-tabnav-btn" onclick="showProjScreen()">
       <span class="icon">✈️</span>切換
-    </button>
-    <button class="mob-tabnav-btn" onclick="showProjScreen()">
-      <span class="icon">✈️</span>切換
-    </button>
   </div>
   <div class="mob-content" id="mob-content"></div>
 </div>
@@ -462,7 +458,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
   <div class="fg">
     <label>從 Google Maps 匯入</label>
     <div class="gmap-row">
-      <input type="text" id="gmurl" placeholder="貼入完整 Google Maps 網址（含 @座標）">
+      <input type="text" id="gmurl" placeholder="貼入 Google Maps 連結（短網址 maps.app.goo.gl 也支援）">
       <button onclick="importGmap()">匯入</button>
     </div>
     <div class="gres2" id="gmres">💡 Google Maps 開啟景點 → 複製瀏覽器網址列完整網址貼入</div>
@@ -549,6 +545,9 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
+// ── APPS SCRIPT (for URL resolution only) ──
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbwszA5a-GCKqnqLnU46bzm9VRmpFmdOMYupCwxPmAuyVuR-WmHQ3_XA6jXi_mJPRSTb3w/exec';
+
 // ── FIREBASE REALTIME DATABASE ──
 // Wait for Firebase module to load
 let _fbReady = false;
@@ -1473,28 +1472,54 @@ async function importGmap(){
   const el=document.getElementById('gmres');
   if(!raw){el.textContent='請貼入網址';el.className='gres2 err';return;}
   el.textContent='解析中…';el.className='gres2 ing';
+
+  // First try to parse coordinates directly from URL
   let lat=null,lng=null,name='';
   let m=raw.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
   if(m){lat=parseFloat(m[1]);lng=parseFloat(m[2]);}
   if(!lat){m=raw.match(/!3d(-?\d+\.\d+).*?!4d(-?\d+\.\d+)/);if(m){lat=parseFloat(m[1]);lng=parseFloat(m[2]);}}
   const nm=raw.match(/\/place\/([^/@?]+)/);
   if(nm)name=decodeURIComponent(nm[1].replace(/\+/g,' '));
+
+  // If short URL or no coords found, use Apps Script to resolve
+  if(!lat&&(raw.includes('maps.app.goo.gl')||raw.includes('goo.gl')||!lat)){
+    el.textContent='透過伺服器解析短網址…';el.className='gres2 ing';
+    try{
+      const r=await fetch(SCRIPT_URL,{
+        method:'POST',
+        body:JSON.stringify({action:'resolveUrl',url:raw})
+      });
+      const d=await r.json();
+      if(d.success){
+        lat=d.lat;lng=d.lng;
+        if(d.name&&!name)name=d.name;
+      } else {
+        el.textContent='❌ '+(d.error||'無法解析此連結');el.className='gres2 err';
+        return;
+      }
+    }catch(e){
+      el.textContent='❌ 伺服器解析失敗，請確認網路連線';el.className='gres2 err';
+      return;
+    }
+  }
+
   if(lat&&lng){
     G.plat=lat;G.plng=lng;
     if(name&&!document.getElementById('sname').value)document.getElementById('sname').value=name;
+    // reverse geocode for better name
     try{
       const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=zh`);
       const d=await r.json();
       const n=d.name||d.display_name?.split(',')[0]||name;
       if(!document.getElementById('sname').value)document.getElementById('sname').value=n;
-      el.textContent=`✅ 找到：${n} (${lat.toFixed(4)}, ${lng.toFixed(4)})`;el.className='gres2 ok';
-    }catch(e){el.textContent=`✅ 座標已取得 (${lat.toFixed(4)}, ${lng.toFixed(4)})`;el.className='gres2 ok';}
-    if(G.map)G.map.flyTo([lat,lng],14,{duration:.7});
-  } else if(raw.includes('maps.app.goo.gl')){
-    el.innerHTML='⚠ 短連結無法解析。請在 Google Maps 點開景點 → 複製<b>瀏覽器網址列的長網址</b>貼入';
-    el.className='gres2 err';
+      el.textContent='✅ 找到：'+n+' ('+lat.toFixed(4)+', '+lng.toFixed(4)+')';el.className='gres2 ok';
+    }catch(e){
+      el.textContent='✅ 座標已取得 ('+lat.toFixed(4)+', '+lng.toFixed(4)+')';el.className='gres2 ok';
+    }
+    if(G.map)G.map.flyTo([lat,lng],16,{duration:.7});
   } else {
-    el.textContent='❌ 找不到座標，請確認是完整的 Google Maps 網址';el.className='gres2 err';
+    el.textContent='❌ 找不到座標，請嘗試在 Google Maps 右鍵點擊景點直接複製座標';
+    el.className='gres2 err';
   }
 }
 async function geocode(){
@@ -1765,28 +1790,54 @@ async function importGmap(){
   const el=document.getElementById('gmres');
   if(!raw){el.textContent='請貼入網址';el.className='gres2 err';return;}
   el.textContent='解析中…';el.className='gres2 ing';
+
+  // First try to parse coordinates directly from URL
   let lat=null,lng=null,name='';
   let m=raw.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
   if(m){lat=parseFloat(m[1]);lng=parseFloat(m[2]);}
   if(!lat){m=raw.match(/!3d(-?\d+\.\d+).*?!4d(-?\d+\.\d+)/);if(m){lat=parseFloat(m[1]);lng=parseFloat(m[2]);}}
   const nm=raw.match(/\/place\/([^/@?]+)/);
   if(nm)name=decodeURIComponent(nm[1].replace(/\+/g,' '));
+
+  // If short URL or no coords found, use Apps Script to resolve
+  if(!lat&&(raw.includes('maps.app.goo.gl')||raw.includes('goo.gl')||!lat)){
+    el.textContent='透過伺服器解析短網址…';el.className='gres2 ing';
+    try{
+      const r=await fetch(SCRIPT_URL,{
+        method:'POST',
+        body:JSON.stringify({action:'resolveUrl',url:raw})
+      });
+      const d=await r.json();
+      if(d.success){
+        lat=d.lat;lng=d.lng;
+        if(d.name&&!name)name=d.name;
+      } else {
+        el.textContent='❌ '+(d.error||'無法解析此連結');el.className='gres2 err';
+        return;
+      }
+    }catch(e){
+      el.textContent='❌ 伺服器解析失敗，請確認網路連線';el.className='gres2 err';
+      return;
+    }
+  }
+
   if(lat&&lng){
     G.plat=lat;G.plng=lng;
     if(name&&!document.getElementById('sname').value)document.getElementById('sname').value=name;
+    // reverse geocode for better name
     try{
       const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=zh`);
       const d=await r.json();
       const n=d.name||d.display_name?.split(',')[0]||name;
       if(!document.getElementById('sname').value)document.getElementById('sname').value=n;
-      el.textContent=`✅ 找到：${n} (${lat.toFixed(4)}, ${lng.toFixed(4)})`;el.className='gres2 ok';
-    }catch(e){el.textContent=`✅ 座標已取得 (${lat.toFixed(4)}, ${lng.toFixed(4)})`;el.className='gres2 ok';}
-    if(G.map)G.map.flyTo([lat,lng],14,{duration:.7});
-  } else if(raw.includes('maps.app.goo.gl')){
-    el.innerHTML='⚠ 短連結無法解析。請在 Google Maps 點開景點 → 複製<b>瀏覽器網址列的長網址</b>貼入';
-    el.className='gres2 err';
+      el.textContent='✅ 找到：'+n+' ('+lat.toFixed(4)+', '+lng.toFixed(4)+')';el.className='gres2 ok';
+    }catch(e){
+      el.textContent='✅ 座標已取得 ('+lat.toFixed(4)+', '+lng.toFixed(4)+')';el.className='gres2 ok';
+    }
+    if(G.map)G.map.flyTo([lat,lng],16,{duration:.7});
   } else {
-    el.textContent='❌ 找不到座標，請確認是完整的 Google Maps 網址';el.className='gres2 err';
+    el.textContent='❌ 找不到座標，請嘗試在 Google Maps 右鍵點擊景點直接複製座標';
+    el.className='gres2 err';
   }
 }
 async function geocode(){
