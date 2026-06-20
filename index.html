@@ -1876,9 +1876,11 @@ async function loadProjects(){
     const r=await fetchWithTimeout(SCRIPT_URL,{},8000);
     const data=await r.json();
     G_PROJ.projects=data[PROJECTS_KEY]||[];
+    console.log('[loadProjects] found projects:', G_PROJ.projects.length, G_PROJ.projects);
     renderProjList();
+    console.log('[loadProjects] renderProjList done, proj-list innerHTML length:', document.getElementById('proj-list')?.innerHTML?.length);
   }catch(e){
-    // keep default HTML, user can still create project
+    console.error('[loadProjects] fetch failed:', e);
   }
 }
 
