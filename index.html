@@ -319,26 +319,34 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
 .proj-indicator{font-size:11px;color:var(--muted);padding:3px 8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis}
 .proj-indicator:hover{border-color:var(--accent);color:var(--accent)}
 </style>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue, child } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyCLfpzsL_rNkI6DEEsvztTYax6M31oX6lg",
+  authDomain: "trip-38e4c.firebaseapp.com",
+  databaseURL: "https://trip-38e4c-default-rtdb.firebaseio.com",
+  projectId: "trip-38e4c",
+  storageBucket: "trip-38e4c.firebasestorage.app",
+  messagingSenderId: "522062439522",
+  appId: "1:522062439522:web:ebce88932013e76d709d3b"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Expose Firebase functions to global scope for use in main script
+  window._FB = { db, ref, set, get, onValue, child };
+  window._FB_READY = true;
+  document.dispatchEvent(new Event('firebase-ready'));
+</script>
 </head>
 <body>
 
 <!-- ══ PROJECT MANAGER SCREEN ══ -->
-<div id="project-screen">
-  <div class="proj-topbar">
-    <div>
-      <div class="proj-topbar-logo">✈️ 旅遊規劃</div>
-      <div class="proj-topbar-sub">選擇或新增旅行專案</div>
-    </div>
-  </div>
-  <div class="proj-list" id="proj-list">
-    <div style="text-align:center;padding:24px 16px;color:var(--muted);font-size:13px;line-height:1.8">
-      還沒有旅行專案<br>點下方「新增旅行專案」開始規劃！
-    </div>
-    <button class="proj-add-btn" onclick="openProjModal()">
-      <span style="font-size:20px">＋</span> 新增旅行專案
-    </button>
-  </div>
-</div>
 
 <!-- ══ NEW PROJECT MODAL ══ -->
 
@@ -541,7 +549,49 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-const SCRIPT_URL='https://script.google.com/macros/s/AKfycbxu76stnOWNhGek2NSXiA_cIqun_ML5vahBXY2yZmstMxe4A3Ei4r7QJTlODQ_m7XToTQ/exec';
+// ── FIREBASE REALTIME DATABASE ──
+// Wait for Firebase module to load
+let _fbReady = false;
+document.addEventListener('firebase-ready', () => { _fbReady = true; });
+
+function fbDb(){ return window._FB?.db; }
+function fbRef(path){ return window._FB?.ref(fbDb(), path); }
+
+// Save data to Firebase path
+async function fbSet(path, value){
+  if(!window._FB) throw new Error('Firebase not ready');
+  await window._FB.set(fbRef(path), value);
+}
+
+// Get data from Firebase path once
+async function fbGet(path){
+  if(!window._FB) throw new Error('Firebase not ready');
+  const snap = await window._FB.get(fbRef(path));
+  return snap.exists() ? snap.val() : null;
+}
+
+// Listen to Firebase path for real-time updates
+function fbListen(path, callback){
+  if(!window._FB) return;
+  window._FB.onValue(fbRef(path), snap => {
+    callback(snap.exists() ? snap.val() : null);
+  });
+}
+
+// Robust fetch with timeout (kept for compatibility)
+async function fetchWithTimeout(url, options={}, ms=10000){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),ms);
+  try{
+    const r=await fetch(url,{...options,signal:ctrl.signal});
+    clearTimeout(timer);return r;
+  }catch(e){clearTimeout(timer);throw e;}
+}
+
+// Save a key-value (Firebase version)
+async function saveToSheets(key, value){
+  return fbSet('data/'+key.replace(/[.#$/[\]]/g,'_'), value);
+}
 const CCLR={nature:'#2C6E49',food:'#C4572A',activity:'#7B5EA7',city:'#1D6FA4'};
 const CLBL={nature:'自然',food:'美食',activity:'活動',city:'城市'};
 const CICO={nature:'🏔',food:'🍽',activity:'🎿',city:'🏙'};
@@ -717,8 +767,12 @@ document.addEventListener('DOMContentLoaded',function(){
   G.spots=PRESETS.map(p=>({...p}));
   G.members=['旅伴A','旅伴B'];
   renderAll();
-  // Show project picker on load
-  loadProjects(); // pre-load project list while screen is showing
+  // Wait for Firebase then load projects
+  if(window._FB_READY){
+    loadProjects();
+  } else {
+    document.addEventListener('firebase-ready', ()=>loadProjects());
+  }
   if(typeof L!=='undefined'){
     if(!isMobile()){
       G.map=L.map('map',{center:[-44.5,169.5],zoom:7});
@@ -1457,6 +1511,8 @@ let saveTimer=null;
 function isMobile(){return window.innerWidth<=700;}
 function autoSave(){
   if(isMobile())return;
+  if(!G_PROJ.current)return; // no project selected
+  if(G._lastLoadedStops===undefined)return; // not loaded yet
   clearTimeout(saveTimer);saveTimer=setTimeout(push,1500);
 }
 
@@ -1746,53 +1802,6 @@ function setSt(cls,lbl){document.getElementById('sdot').className='sdot'+(cls?' 
 
 function isMobile(){return window.innerWidth<=700;}
 
-function push(){
-  // Safety check: don't overwrite if current data looks empty/corrupted
-  // compared to what we last loaded from sheets
-  const hasContent=G.days.some(d=>d.stops.length>0)||G.spots.some(s=>s.custom)||G.exps.length>0;
-  const lastLoadedStops=G._lastLoadedStops||0;
-  const currentStops=G.days.reduce((a,d)=>a+d.stops.length,0);
-  // If we had data before and now it's empty, don't save
-  if(lastLoadedStops>2&&currentStops===0&&!G.spots.some(s=>s.custom)){
-    setSt('err','⚠ 偵測到資料異常，已暫停自動同步');
-    console.warn('Auto-save blocked: data looks empty compared to last load');
-    return;
-  }
-  setSt('ing','儲存中…');
-  const customSpots=G.spots.filter(s=>s.custom===true);
-  const pl={customSpots,days:G.days,exps:G.exps,members:G.members,driveCache:G.driveCache,
-    tripDays:document.getElementById('tdays').value,
-    tripStart:document.getElementById('tstart').value,
-    savedAt:new Date().toISOString()
-  };
-  fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'save',payload:{key:'nz_data',value:pl}})})
-    .then(r=>r.json())
-    .then(()=>{
-      setSt('ok','已同步 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
-      // also save a backup slot (rotating, keep 5)
-      const backupKey='nz_backup_'+((G._backupSlot||0)%5);
-      G._backupSlot=(G._backupSlot||0)+1;
-      fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'save',payload:{key:backupKey,value:{...pl,backupTime:new Date().toLocaleString('zh-TW')}}})}).catch(()=>{});
-    })
-    .catch(()=>setSt('err','同步失敗'));
-}
-async function restoreBackup(){
-  // fetch all backup slots and show picker
-  setSt('ing','載入備份中…');
-  const slots=await Promise.all([0,1,2,3,4].map(i=>
-    fetch(SCRIPT_URL).then(r=>r.json()).then(d=>({slot:i,data:d['nz_backup_'+i]})).catch(()=>null)
-  ));
-  const valid=slots.filter(s=>s?.data?.backupTime).sort((a,b)=>b.slot-a.slot);
-  if(!valid.length){setSt('err','無備份可用');return;}
-  const options=valid.map(v=>`${v.slot}: ${v.data.backupTime} (${v.data.days?.reduce((a,d)=>a+d.stops.length,0)||0} 個行程點)`).join('\n');
-  const choice=prompt(`選擇要復原的備份 (輸入數字):\n${options}`);
-  if(choice===null)return;
-  const selected=valid.find(v=>String(v.slot)===choice.trim());
-  if(!selected){alert('無效的選擇');return;}
-  if(!confirm(`確定要復原到 ${selected.data.backupTime} 的版本嗎？目前資料會被覆蓋。`))return;
-  applyLoadedData(selected.data);
-  setSt('ok','已復原至 '+selected.data.backupTime);
-}
 
 function applyLoadedData(d){
   if(!d||typeof d!=='object')return;
@@ -1810,43 +1819,6 @@ function applyLoadedData(d){
   G._lastLoadedStops=G.days.reduce((a,d)=>a+d.stops.length,0);
 }
 
-function loadFromSheets(){
-  setSt('ing','載入中…');
-  fetch(SCRIPT_URL).then(r=>r.json()).then(data=>{
-    const d=data.nz_data;
-    if(!d||typeof d!=='object'||(!d.days&&!d.customSpots&&!d.spots&&!d.exps)){
-      // Nothing saved yet - build fresh days
-      rebuildDays();
-      setSt('ok','已連線（新行程）');
-      return;
-    }
-    if(d.tripDays)document.getElementById('tdays').value=d.tripDays;
-    if(d.tripStart)document.getElementById('tstart').value=d.tripStart;
-    if(d.members&&d.members.length)G.members=d.members;
-    if(d.driveCache&&typeof d.driveCache==='object')Object.assign(G.driveCache,d.driveCache);
-    // support both old key ('spots') and new key ('customSpots')
-    const customSpots=d.customSpots||d.spots||[];
-    if(customSpots.length)customSpots.forEach(sp=>{
-      if(!G.spots.find(x=>x.id===+sp.id)){
-        G.spots.push({...sp,id:+sp.id,custom:true});
-      }
-    });
-    if(d.days&&d.days.length){
-      G.days=d.days.map(day=>({...day,stops:(day.stops||[]).map(st=>({...st,sid:+st.sid}))}));
-    } else {
-      rebuildDays(); // no saved days, build fresh
-    }
-    if(d.exps&&d.exps.length)G.exps=d.exps;
-    renderAll();
-    // record what we loaded so push() can detect data loss
-    G._lastLoadedStops=G.days.reduce((a,d)=>a+d.stops.length,0);
-    G._lastLoadedCustom=G.spots.filter(s=>s.custom).length;
-    G._backupSlot=0;
-    setSt('ok','已載入 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
-    // fetch OSRM drive times for all days
-    G.days.forEach(day=>fetchDayDriveTimes(day));
-  }).catch(()=>setSt('err','載入失敗，請確認網路'));
-}
 
 
 // ══════════════════════════════════════════
@@ -1866,21 +1838,19 @@ function showProjScreen(){
 }
 function hideProjScreen(){
   const el=document.getElementById('proj-screen');
-  console.log('[hideProjScreen] before:', el.className);
+
   el.classList.remove('show');
-  console.log('[hideProjScreen] after:', el.className);
+
 }
 
 async function loadProjects(){
+  renderProjList(); // show immediately with empty/cached state
   try{
-    const r=await fetchWithTimeout(SCRIPT_URL,{},8000);
-    const data=await r.json();
-    G_PROJ.projects=data[PROJECTS_KEY]||[];
-    console.log('[loadProjects] found projects:', G_PROJ.projects.length, G_PROJ.projects);
+    const data=await fbGet('data/'+PROJECTS_KEY);
+    G_PROJ.projects=Array.isArray(data)?data:[];
     renderProjList();
-    console.log('[loadProjects] renderProjList done, proj-list innerHTML length:', document.getElementById('proj-list')?.innerHTML?.length);
   }catch(e){
-    console.error('[loadProjects] fetch failed:', e);
+    // keep default empty state shown
   }
 }
 
@@ -1919,35 +1889,39 @@ function openProject(projId){
   if(!proj)return;
   G_PROJ.current=proj;
   G._currentProjKey=projDataKey(projId);
-  // reset state immediately
+  // reset state
   G.spots=PRESETS.map(p=>({...p}));
   G.days=[];G.exps=[];G.members=['旅伴A','旅伴B'];G.driveCache={};G._lastLoadedStops=0;G._mobDay=1;
-  // update UI immediately - don't wait for fetch
+  // update topbar
   document.getElementById('proj-title').textContent=proj.name;
   document.getElementById('tdays').value=proj.days||7;
   if(proj.startDate)document.getElementById('tstart').value=proj.startDate;
-  rebuildDays();
-  renderAll();
-  console.log('[openProject] hiding proj screen...');
+  // DON'T rebuildDays or autoSave yet — wait for Sheets data first
   hideProjScreen();
-  console.log('[openProject] proj-screen display:', document.getElementById('proj-screen').style.display, 'classes:', document.getElementById('proj-screen').className);
-  if(isMobile())renderMobContent();
-  // load data in background
   setSt('ing','載入中…');
-  fetch(SCRIPT_URL)
-    .then(r=>r.json())
-    .then(data=>{
-      const d=data[G._currentProjKey];
+  fbGet('data/'+G._currentProjKey.replace(/[.#$[\]]/g,'_'))
+    .then(d=>{
       if(d&&typeof d==='object'&&(d.days||d.customSpots||d.exps)){
+        // restore from sheets
         applyLoadedData(d);
         G._lastLoadedStops=G.days.reduce((a,day)=>a+day.stops.length,0);
-        renderAll();
-        if(isMobile())renderMobContent();
-        G.days.forEach(day=>fetchDayDriveTimes(day));
+        setSt('ok','已載入 '+proj.name);
+      } else {
+        // nothing saved yet, build fresh
+        rebuildDays();
+        setSt('ok',proj.name+' (新行程)');
       }
-      setSt('ok','已載入 '+proj.name);
+      renderAll();
+      if(isMobile())renderMobContent();
+      G.days.forEach(day=>fetchDayDriveTimes(day));
     })
-    .catch(()=>setSt('ok',proj.name+' (未同步)'));
+    .catch(()=>{
+      // fetch failed, build fresh but don't save
+      rebuildDays();
+      renderAll();
+      if(isMobile())renderMobContent();
+      setSt('err','載入失敗，請按 ↻ 重新載入');
+    });
 }
 
 async function createProject(){
@@ -2037,28 +2011,9 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 
 // ── override push ──
-// Robust fetch with timeout
-async function fetchWithTimeout(url, options={}, ms=10000){
-  const ctrl=new AbortController();
-  const timer=setTimeout(()=>ctrl.abort(),ms);
-  try{
-    const r=await fetch(url,{...options,signal:ctrl.signal});
-    clearTimeout(timer);
-    return r;
-  }catch(e){clearTimeout(timer);throw e;}
-}
-
-// Save a key-value to Sheets
-async function saveToSheets(key, value){
-  const r=await fetchWithTimeout(SCRIPT_URL,{
-    method:'POST',
-    body:JSON.stringify({action:'save',payload:{key,value}})
-  });
-  return r.json();
-}
-
 function push(){
   if(!G_PROJ.current){return;}
+  if(!window._FB){setSt('err','Firebase 未就緒');return;}
   const lastLoadedStops=G._lastLoadedStops||0;
   const currentStops=G.days.reduce((a,d)=>a+d.stops.length,0);
   if(lastLoadedStops>2&&currentStops===0&&!G.spots.some(s=>s.custom)){setSt('err','⚠ 資料異常，已暫停同步');return;}
@@ -2067,7 +2022,7 @@ function push(){
   const pl={customSpots,days:G.days,exps:G.exps,members:G.members,driveCache:G.driveCache,
     tripDays:document.getElementById('tdays').value,
     tripStart:document.getElementById('tstart').value,
-    savedAt:new Date().toISOString()};
+    savedAt:new Date().toISOString()};G._lastSavedAt=pl.savedAt;
   const key=G._currentProjKey||'proj_default_data';
   saveToSheets(key,pl)
     .then(()=>{
@@ -2076,7 +2031,7 @@ function push(){
       G._backupSlot=(G._backupSlot||0)+1;
       saveToSheets(bk,{...pl,backupTime:new Date().toLocaleString('zh-TW')}).catch(()=>{});
     })
-    .catch(()=>setSt('err','同步失敗，請手動按儲存'));
+    .catch(()=>setSt('err','同步失敗'));
 }
 
 // ── override loadFromSheets ──
@@ -2084,31 +2039,35 @@ function loadFromSheets(){
   if(!G_PROJ.current)return;
   setSt('ing','載入中…');
   const key=G._currentProjKey||'proj_default_data';
-  fetchWithTimeout(SCRIPT_URL,{},10000).then(r=>r.json()).then(data=>{
-    const d=data[key];
-    if(!d||typeof d!=='object'||(!d.days&&!d.customSpots&&!d.spots&&!d.exps)){rebuildDays();setSt('ok','已連線（新行程）');return;}
-    applyLoadedData(d);
-    G._lastLoadedCustom=G.spots.filter(s=>s.custom).length;
-    G._backupSlot=0;
-    setSt('ok','已載入 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
-    G.days.forEach(day=>fetchDayDriveTimes(day));
-  }).catch(()=>setSt('err','載入失敗'));
+  fbGet('data/'+key.replace(/[.#$[\]]/g,'_'))
+    .then(d=>{
+      if(!d||typeof d!=='object'||(!d.days&&!d.customSpots&&!d.spots&&!d.exps)){rebuildDays();setSt('ok','已連線（新行程）');return;}
+      applyLoadedData(d);
+      G._lastLoadedCustom=G.spots.filter(s=>s.custom).length;
+      G._backupSlot=0;
+      setSt('ok','已載入 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
+      G.days.forEach(day=>fetchDayDriveTimes(day));
+    }).catch(()=>setSt('err','載入失敗'));
 }
 
 // ── override restoreBackup ──
 async function restoreBackup(){
   if(!G_PROJ.current){alert('請先選擇專案');return;}
+  if(!window._FB){alert('Firebase 未就緒');return;}
   setSt('ing','載入備份…');
   try{
-    const r=await fetch(SCRIPT_URL);
-    const data=await r.json();
     const pid=G_PROJ.current.id;
-    const slots=[0,1,2,3,4].map(i=>({slot:i,data:data['proj_'+pid+'_backup_'+i]})).filter(s=>s.data?.backupTime);
-    if(!slots.length){setSt('err','無備份可用');return;}
-    const opts=slots.map(v=>v.slot+': '+v.data.backupTime).join('\n');
+    const slots=await Promise.all([0,1,2,3,4].map(async i=>{
+      const key='data/proj_'+pid+'_backup_'+i;
+      const d=await fbGet(key);
+      return {slot:i,data:d};
+    }));
+    const valid=slots.filter(s=>s.data?.backupTime);
+    if(!valid.length){setSt('err','無備份可用');return;}
+    const opts=valid.map(v=>v.slot+': '+v.data.backupTime).join('\n');
     const choice=prompt('選擇備份（輸入數字）:\n'+opts);
     if(choice===null)return;
-    const sel=slots.find(v=>String(v.slot)===choice.trim());
+    const sel=valid.find(v=>String(v.slot)===choice.trim());
     if(!sel){alert('無效選擇');return;}
     if(!confirm('復原至 '+sel.data.backupTime+'？'))return;
     applyLoadedData(sel.data);setSt('ok','已復原');
