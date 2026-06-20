@@ -777,11 +777,30 @@ document.addEventListener('DOMContentLoaded',function(){
   G.spots=[]; // start empty, filled when project is opened
   G.members=['旅伴A','旅伴B'];
   renderAll();
-  // Wait for Firebase then load projects
-  if(window._FB_READY){
+  // Wait for Firebase then load projects and auto-reopen last project
+  function onFirebaseReady(){
     loadProjects();
+    // auto-reopen last project
+    const lastProjId=localStorage.getItem('lastProjId');
+    if(lastProjId){
+      // wait a bit for project list to load
+      setTimeout(async ()=>{
+        if(G_PROJ.projects.length===0){
+          // projects not loaded yet, try to load first
+          try{
+            const data=await fbGet('data/'+PROJECTS_KEY);
+            G_PROJ.projects=Array.isArray(data)?data:[];
+          }catch(e){}
+        }
+        const proj=G_PROJ.projects.find(p=>p.id===lastProjId);
+        if(proj) openProject(lastProjId);
+      },800);
+    }
+  }
+  if(window._FB_READY){
+    onFirebaseReady();
   } else {
-    document.addEventListener('firebase-ready', ()=>loadProjects());
+    document.addEventListener('firebase-ready', onFirebaseReady);
   }
   if(typeof L!=='undefined'){
     if(!isMobile()){
@@ -1899,6 +1918,7 @@ function openProject(projId){
   if(!proj)return;
   G_PROJ.current=proj;
   G._currentProjKey=projDataKey(projId);
+  localStorage.setItem('lastProjId', projId); // remember for refresh
   // reset state - empty spots, no presets
   G.spots=[];
   G.days=[];G.exps=[];G.members=['旅伴A','旅伴B'];G.driveCache={};G._lastLoadedStops=0;G._mobDay=1;
@@ -1948,7 +1968,8 @@ function openProject(projId){
         setSt('ok','已同步（即時）');
       });
     })
-    .catch(()=>{
+    .catch((err)=>{
+      console.error('openProject load failed:', err);
       rebuildDays();
       renderAll();
       if(isMobile())renderMobContent();
