@@ -415,6 +415,11 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
 .map-search-result-icon{font-size:18px;flex-shrink:0;margin-top:1px}
 .map-search-result-name{font-size:13px;font-weight:500;color:#333}
 .map-search-result-addr{font-size:11px;color:#888;margin-top:2px}
+
+/* Force Google Autocomplete dropdown to show above overflow:hidden containers */
+.pac-container {
+  z-index: 9999 !important;
+}
 </style>
 
 <!-- Firebase SDK -->
@@ -472,7 +477,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
       <button class="ltab on" onclick="ltab('spots',this)">🗺 景點庫</button>
       <button class="ltab" onclick="ltab('budget',this)">💰 分帳</button>
     </div>
-    <div id="lsec-spots" style="display:flex;flex-direction:column;flex:1;overflow:hidden;position:relative">
+    <div id="lsec-spots" style="display:flex;flex-direction:column;flex:1;overflow:visible;position:relative">
       <!-- Map Search -->
       <div style="padding:8px 10px 4px;border-bottom:1px solid var(--border);position:relative;z-index:50">
         <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:7px;background:#fff;padding:0 10px;gap:6px">
@@ -494,7 +499,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
         <button class="chip on" onclick="filtRegion('all',this)">所有地區</button>
       </div>
       <div class="frow" id="region-chips" style="padding-top:4px;display:none"></div>
-      <div class="slist" id="slist"></div>
+      <div class="slist" id="slist" style="overflow-y:auto;flex:1"></div>
       <div class="drag-hint">☝ 拖曳景點卡片到右側行程</div>
       <button class="addrow" onclick="openM('spot')">＋ 新增景點</button>
     </div>
