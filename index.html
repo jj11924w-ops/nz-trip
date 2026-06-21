@@ -318,6 +318,103 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
 /* current project indicator in topbar */
 .proj-indicator{font-size:11px;color:var(--muted);padding:3px 8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis}
 .proj-indicator:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── MOBILE ADD TO DAY OVERLAY ── */
+.mob-add-day-overlay{
+  position:fixed;inset:0;z-index:600;
+  background:rgba(0,0,0,.5);
+  display:flex;align-items:flex-end;
+}
+.mob-add-day-sheet{
+  background:var(--panel);
+  border-radius:16px 16px 0 0;
+  width:100%;
+  max-height:85vh;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.mob-add-day-header{
+  padding:14px 16px 10px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.mob-add-day-title{font-size:15px;font-weight:600}
+.mob-add-day-close{font-size:20px;background:none;border:none;cursor:pointer;color:var(--muted);padding:0 4px}
+.mob-add-day-spotname{
+  padding:10px 16px;
+  font-size:13px;color:var(--muted);
+  background:#F7F5F0;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.mob-add-day-body{overflow-y:auto;flex:1;padding:8px 0}
+.mob-day-row{
+  padding:10px 16px;
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+}
+.mob-day-row:active{background:#F0EDE8}
+.mob-day-row-title{font-size:14px;font-weight:600;color:var(--accent);margin-bottom:4px}
+.mob-day-row-stops{font-size:12px;color:var(--muted)}
+.mob-insert-btn{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 16px;
+  cursor:pointer;
+  border-bottom:1px solid #F0EDE8;
+}
+.mob-insert-btn:active{background:#F0EDE8}
+.mob-insert-line{flex:1;height:1px;background:var(--accent);opacity:.3}
+.mob-insert-plus{
+  font-size:11px;color:var(--accent);
+  border:1px solid var(--accent);
+  border-radius:10px;padding:2px 8px;
+  white-space:nowrap;flex-shrink:0;
+}
+.mob-empty-day-btn{
+  display:flex;align-items:center;justify-content:center;
+  padding:14px 16px;
+  color:var(--accent);font-size:13px;font-weight:500;
+  cursor:pointer;
+}
+.mob-empty-day-btn:active{background:#F0EDE8}
+
+/* ── MAP SEARCH BAR ── */
+.map-search-wrap{
+  position:relative;
+  z-index:10;width:100%;
+}
+.map-search-box{
+  display:flex;align-items:center;gap:0;
+  background:#fff;border-radius:8px;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+  overflow:hidden;
+}
+.map-search-input{
+  flex:1;padding:10px 14px;font-size:14px;border:none;outline:none;
+  font-family:inherit;color:#333;background:transparent;
+}
+.map-search-btn{
+  padding:10px 14px;background:var(--accent);color:#fff;
+  border:none;cursor:pointer;font-size:14px;
+}
+.map-search-btn:hover{background:#235A3C}
+.map-search-results{
+  margin-top:2px;background:#fff;border-radius:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,.15);
+  max-height:240px;overflow-y:auto;
+  display:none;
+  border:1px solid var(--border);
+}
+.map-search-result{
+  padding:10px 14px;cursor:pointer;border-bottom:1px solid #F0EDE8;
+  display:flex;align-items:flex-start;gap:10px;
+}
+.map-search-result:last-child{border-bottom:none}
+.map-search-result:hover{background:#F7F5F0}
+.map-search-result-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.map-search-result-name{font-size:13px;font-weight:500;color:#333}
+.map-search-result-addr{font-size:11px;color:#888;margin-top:2px}
 </style>
 
 <!-- Firebase SDK -->
@@ -375,7 +472,17 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
       <button class="ltab on" onclick="ltab('spots',this)">🗺 景點庫</button>
       <button class="ltab" onclick="ltab('budget',this)">💰 分帳</button>
     </div>
-    <div id="lsec-spots" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+    <div id="lsec-spots" style="display:flex;flex-direction:column;flex:1;overflow:hidden;position:relative">
+      <!-- Map Search -->
+      <div style="padding:8px 10px 4px;border-bottom:1px solid var(--border);position:relative;z-index:50">
+        <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:7px;background:#fff;padding:0 10px;gap:6px">
+          <span style="color:var(--muted);font-size:14px">🔍</span>
+          <input id="map-search-input" 
+            placeholder="搜尋景點，選擇後加入景點庫..."
+            style="flex:1;padding:9px 0;font-size:13px;border:none;outline:none;font-family:inherit;background:transparent">
+        </div>
+        <div id="map-search-results" style="position:absolute;left:10px;right:10px;top:100%;margin-top:2px;background:#fff;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);max-height:280px;overflow-y:auto;display:none;border:1px solid var(--border);z-index:100"></div>
+      </div>
       <div class="frow" id="cat-frow">
         <button class="chip on" onclick="filt('all',this)">全部</button>
         <button class="chip" onclick="filt('nature',this)">自然</button>
@@ -472,6 +579,15 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
     </div>
     <div class="sres" id="sres"></div>
   </div>
+  <div class="fg">
+    <label>直接輸入座標（最準確）<span style="font-size:10px;color:var(--muted);font-weight:400"> — Google Maps 點擊景點後複製右下角座標</span></label>
+    <div style="display:flex;gap:6px">
+      <input type="text" id="s-lat" placeholder="緯度 例：-45.0312" style="flex:1">
+      <input type="text" id="s-lng" placeholder="經度 例：168.6626" style="flex:1">
+      <button class="sbtn" style="position:static;transform:none;white-space:nowrap" onclick="applyManualCoord()">套用</button>
+    </div>
+    <div class="sres" id="coord-res"></div>
+  </div>
   <div class="fr2">
     <div class="fg"><label>地區</label>
       <select id="sreg">
@@ -543,7 +659,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
 </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA2OBzw-8Ueg191APWs70S19MPD2ZW6Sxc&libraries=places,geocoding&v=weekly&callback=initGoogleMap" async defer></script>
 <script>
 // ── APPS SCRIPT (for URL resolution only) ──
 const SCRIPT_URL='https://script.google.com/macros/s/AKfycbwszA5a-GCKqnqLnU46bzm9VRmpFmdOMYupCwxPmAuyVuR-WmHQ3_XA6jXi_mJPRSTb3w/exec';
@@ -785,19 +901,8 @@ document.addEventListener('DOMContentLoaded',function(){
   } else {
     document.addEventListener('firebase-ready', onFirebaseReady);
   }
-  if(typeof L!=='undefined'){
-    if(!isMobile()){
-      G.map=L.map('map',{center:[-44.5,169.5],zoom:7});
-    } else {
-      G.map=null; // no map on mobile travel view
-    }
-    if(G.map){
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(G.map);
-      renderMkrs();
-    }
-  } else if(!isMobile()){
-    document.getElementById('map').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:13px">地圖載入失敗，請確認網路</div>';
-  }
+  // Google Maps initialized via callback (initGoogleMap)
+  if(isMobile()) G.map=null;
   loadFromSheets();
   // init toggle position
   const tog=document.getElementById('rdtoggle');
@@ -878,7 +983,10 @@ function renderMobSpots(el){
           <button class="mob-sheet-btn" onclick="editSpot(${s.id})">編輯</button>
           <button class="mob-sheet-btn" style="color:#DC2626;border-color:#FCA5A5" onclick="deleteSpot(${s.id})">刪除</button>
         </div>`
-      :`<button class="mob-sheet-btn primary" onclick="focusSpot(${s.id})">地圖</button>`;
+      :`<div style="display:flex;gap:5px;flex-shrink:0">
+          <button class="mob-sheet-btn primary" onclick="openMobAddDay(${s.id})">＋ 加入行程</button>
+          <button class="mob-sheet-btn" onclick="focusSpot(${s.id})">地圖</button>
+        </div>`;
     return `<div class="mob-spot-card">
       <div class="mob-spot-card-info">
         <div class="mob-spot-card-name">${CICO[s.cat]} ${esc(s.name)}</div>
@@ -1023,14 +1131,6 @@ function filtRegion(r,btn){
   document.querySelectorAll('#region-chips .chip').forEach(c=>c.classList.remove('on'));
   btn.classList.add('on');
   renderSpots();
-}
-function focusSpot(id){
-  const s=G.spots.find(x=>x.id===id);
-  document.querySelectorAll('.sc').forEach(c=>c.classList.remove('hl'));
-  document.getElementById('sc'+id)?.classList.add('hl');
-  if(!s||!s.lat||!G.map)return;
-  G.map.flyTo([s.lat,s.lng],13,{duration:.7});
-  if(G.mkrs[id])G.mkrs[id].openPopup();
 }
 function deleteSpot(id){
   if(!confirm('確定刪除此景點？相關行程也會移除。'))return;
@@ -1228,22 +1328,6 @@ function mkIcon(cat,faded){
     html:`<div style="width:28px;height:28px;border-radius:50%;background:${CCLR[cat]};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:13px;opacity:${faded?'0.25':'1'}">${CICO[cat]}</div>`,
     className:'',iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-18]
   });
-}
-function renderMkrs(){
-  if(!G.map)return;
-  Object.values(G.mkrs).forEach(m=>G.map.removeLayer(m));G.mkrs={};
-  if(G.rl){G.map.removeLayer(G.rl);G.rl=null;}
-  const activeIds=G.activeDay?new Set(G.days.find(d=>d.id===G.activeDay)?.stops.map(st=>st.sid)||[]):null;
-  G.spots.filter(s=>s.lat&&s.lng).forEach(s=>{
-    const faded=activeIds!==null&&!activeIds.has(s.id);
-    const m=L.marker([s.lat,s.lng],{icon:mkIcon(s.cat,faded)}).addTo(G.map).bindPopup(mkPop(s));
-    G.mkrs[s.id]=m;
-    m.on('click',()=>{document.querySelectorAll('.sc').forEach(c=>c.classList.remove('hl'));document.getElementById('sc'+s.id)?.classList.add('hl');});
-  });
-  const targetDays=G.activeDay?G.days.filter(d=>d.id===G.activeDay):G.days;
-  const coords=targetDays.flatMap(d=>d.stops.map(st=>{const sp=G.spots.find(x=>x.id===+st.sid);return sp&&sp.lat?[sp.lat,sp.lng]:null;}).filter(Boolean));
-  if(coords.length>1)G.rl=L.polyline(coords,{color:'#2C6E49',weight:2.5,opacity:.6,dashArray:'6,5'}).addTo(G.map);
-  if(G.activeDay&&coords.length>0)G.map.fitBounds(coords.length===1?L.latLngBounds([coords[0],coords[0]]).pad(0.5):coords,{padding:[40,40],maxZoom:13});
 }
 function mkPop(s){
   return `<div style="min-width:160px">
@@ -1459,9 +1543,10 @@ function openM(m){
 function closeM(m){
   document.getElementById('ov-'+m).classList.remove('on');
   if(m==='spot'){
-    ['sname','snote','scost','gmurl'].forEach(id=>document.getElementById(id).value='');
+    ['sname','snote','scost','gmurl','s-lat','s-lng'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const sr=document.getElementById('sres');if(sr){sr.textContent='';sr.className='sres';}
-    const gr=document.getElementById('gmres');if(gr){gr.className='gres2';gr.innerHTML='💡 Google Maps 開啟景點 → 複製瀏覽器網址列完整網址貼入';}
+    const cr=document.getElementById('coord-res');if(cr){cr.textContent='';cr.className='sres';}
+    const gr=document.getElementById('gmres');if(gr){gr.className='gres2';gr.innerHTML='💡 貼入 Google Maps 連結（短網址也支援）';}
     G.plat=null;G.plng=null;G.editSpotId=null;
   }
 }
@@ -1516,12 +1601,24 @@ async function importGmap(){
     }catch(e){
       el.textContent='✅ 座標已取得 ('+lat.toFixed(4)+', '+lng.toFixed(4)+')';el.className='gres2 ok';
     }
-    if(G.map)G.map.flyTo([lat,lng],16,{duration:.7});
+    if(G.map){G.map.setCenter({lat,lng});G.map.setZoom(16);}
   } else {
     el.textContent='❌ 找不到座標，請嘗試在 Google Maps 右鍵點擊景點直接複製座標';
     el.className='gres2 err';
   }
 }
+function applyManualCoord(){
+  const lat=parseFloat(document.getElementById('s-lat').value);
+  const lng=parseFloat(document.getElementById('s-lng').value);
+  const el=document.getElementById('coord-res');
+  if(isNaN(lat)||isNaN(lng)||lat<-90||lat>90||lng<-180||lng>180){
+    el.textContent='請輸入有效的座標';el.className='sres err';return;
+  }
+  G.plat=lat;G.plng=lng;
+  el.textContent='✅ 座標已設定 ('+lat.toFixed(4)+', '+lng.toFixed(4)+')';el.className='sres ok';
+  if(G.map){G.map.setCenter({lat,lng});G.map.setZoom(16);}
+}
+
 async function geocode(){
   const q=document.getElementById('sname').value.trim();if(!q)return;
   const el=document.getElementById('sres');
@@ -1777,9 +1874,10 @@ function openM(m){
 function closeM(m){
   document.getElementById('ov-'+m).classList.remove('on');
   if(m==='spot'){
-    ['sname','snote','scost','gmurl'].forEach(id=>document.getElementById(id).value='');
+    ['sname','snote','scost','gmurl','s-lat','s-lng'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     const sr=document.getElementById('sres');if(sr){sr.textContent='';sr.className='sres';}
-    const gr=document.getElementById('gmres');if(gr){gr.className='gres2';gr.innerHTML='💡 Google Maps 開啟景點 → 複製瀏覽器網址列完整網址貼入';}
+    const cr=document.getElementById('coord-res');if(cr){cr.textContent='';cr.className='sres';}
+    const gr=document.getElementById('gmres');if(gr){gr.className='gres2';gr.innerHTML='💡 貼入 Google Maps 連結（短網址也支援）';}
     G.plat=null;G.plng=null;G.editSpotId=null;
   }
 }
@@ -1834,12 +1932,24 @@ async function importGmap(){
     }catch(e){
       el.textContent='✅ 座標已取得 ('+lat.toFixed(4)+', '+lng.toFixed(4)+')';el.className='gres2 ok';
     }
-    if(G.map)G.map.flyTo([lat,lng],16,{duration:.7});
+    if(G.map){G.map.setCenter({lat,lng});G.map.setZoom(16);}
   } else {
     el.textContent='❌ 找不到座標，請嘗試在 Google Maps 右鍵點擊景點直接複製座標';
     el.className='gres2 err';
   }
 }
+function applyManualCoord(){
+  const lat=parseFloat(document.getElementById('s-lat').value);
+  const lng=parseFloat(document.getElementById('s-lng').value);
+  const el=document.getElementById('coord-res');
+  if(isNaN(lat)||isNaN(lng)||lat<-90||lat>90||lng<-180||lng>180){
+    el.textContent='請輸入有效的座標';el.className='sres err';return;
+  }
+  G.plat=lat;G.plng=lng;
+  el.textContent='✅ 座標已設定 ('+lat.toFixed(4)+', '+lng.toFixed(4)+')';el.className='sres ok';
+  if(G.map){G.map.setCenter({lat,lng});G.map.setZoom(16);}
+}
+
 async function geocode(){
   const q=document.getElementById('sname').value.trim();if(!q)return;
   const el=document.getElementById('sres');
@@ -1971,16 +2081,16 @@ function openProject(projId){
   // DON'T rebuildDays or autoSave yet — wait for Sheets data first
   hideProjScreen();
   setSt('ing','載入中…');
-  // reset map to destination center
+  // reset map to destination center (Google Maps)
   if(G.map){
     const dest=(proj.destination||'').toLowerCase();
-    let center=[-44.5,169.5],zoom=7; // default NZ
-    if(dest.includes('日本'))     {center=[35.6762,139.6503];zoom=6;}
-    else if(dest.includes('泰國')) {center=[13.7563,100.5018];zoom=6;}
-    else if(dest.includes('韓國')) {center=[37.5665,126.9780];zoom=7;}
-    else if(dest.includes('歐洲')) {center=[48.8566,2.3522];zoom=5;}
-    else if(dest.includes('紐西蘭')){center=[-44.5,169.5];zoom=7;}
-    G.map.setView(center,zoom);
+    let lat=-44.5,lng=169.5,zoom=7;
+    if(dest.includes('日本'))     {lat=35.6762;lng=139.6503;zoom=6;}
+    else if(dest.includes('泰國')) {lat=13.7563;lng=100.5018;zoom=6;}
+    else if(dest.includes('韓國')) {lat=37.5665;lng=126.9780;zoom=7;}
+    else if(dest.includes('歐洲')) {lat=48.8566;lng=2.3522;zoom=5;}
+    G.map.setCenter({lat,lng});
+    G.map.setZoom(zoom);
   }
   fbGet('data/'+G._currentProjKey.replace(/[.#$[\]]/g,'_'))
     .then(d=>{
@@ -2169,6 +2279,499 @@ async function restoreBackup(){
   }catch(e){setSt('err','復原失敗');}
 }
 
+
+// ══════════════════════════════════════════
+//  GOOGLE MAPS
+// ══════════════════════════════════════════
+
+let G_infoWindow = null;
+let G_markers = [];
+
+function initGoogleMap(){
+  if(isMobile()) return;
+  const proj = G_PROJ.current;
+  let center = {lat:-44.5,lng:169.5}, zoom = 7;
+  if(proj){
+    const dest=(proj.destination||'').toLowerCase();
+    if(dest.includes('日本'))     {center={lat:35.6762,lng:139.6503};zoom=6;}
+    else if(dest.includes('泰國')) {center={lat:13.7563,lng:100.5018};zoom=6;}
+    else if(dest.includes('韓國')) {center={lat:37.5665,lng:126.9780};zoom=7;}
+    else if(dest.includes('歐洲')) {center={lat:48.8566,lng:2.3522};zoom=5;}
+  }
+  G.map = new google.maps.Map(document.getElementById('map'), {
+    center, zoom,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+  });
+  G_infoWindow = new google.maps.InfoWindow();
+
+  // Single click handler - checks for POI first, then falls back to coordinate click
+  G.map.addListener('click', async (e) => {
+    if(e.placeId){
+      // Clicked on a Google Maps POI - use new Places API
+      e.stop();
+      try{
+        const {Place} = await google.maps.importLibrary('places');
+        const place = new Place({id: e.placeId});
+        await place.fetchFields({fields: ['displayName','location','formattedAddress','regularOpeningHours','rating']});
+        showPlacePopupNew(place, e.latLng.lat(), e.latLng.lng());
+      }catch(err){
+        // Fallback to coordinate popup
+        showMapClickPopup(e.latLng.lat(), e.latLng.lng());
+      }
+    } else {
+      // Clicked on empty map area
+      showMapClickPopup(e.latLng.lat(), e.latLng.lng());
+    }
+  });
+
+  renderMkrs();
+}
+
+function showMapClickPopup(lat, lng){
+  // Use Geocoding API to get location name
+  try{
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({location:{lat,lng},language:'zh-TW'}, (results, status) => {
+      let name = '';
+      if(status === 'OK' && results && results.length > 0){
+        // Try to get a meaningful name from address components
+        const r = results[0];
+        const comp = r.address_components || [];
+        // prefer establishment, point_of_interest, or first component
+        const useful = comp.find(c=>c.types.includes('establishment')||c.types.includes('point_of_interest'));
+        name = useful?.long_name || comp[0]?.long_name || r.formatted_address.split(',')[0];
+      }
+      _showClickContent(lat, lng, name);
+    });
+  }catch(e){
+    _showClickContent(lat, lng, '');
+  }
+}
+
+function _showClickContent(lat, lng, name){
+  const safeN = (name||'').replace(/'/g,"\'").replace(/"/g,'&quot;');
+  const content = `<div style="min-width:200px;font-family:inherit">
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px">${name||'此位置'}</div>
+    <div style="font-size:11px;color:#666;margin-bottom:10px">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
+    <button onclick="quickAddSpot('${safeN}',${lat},${lng})"
+      style="width:100%;padding:7px;background:#2C6E49;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">
+      ＋ 加入景點庫
+    </button>
+  </div>`;
+  G_infoWindow.setContent(content);
+  G_infoWindow.setPosition({lat,lng});
+  G_infoWindow.open(G.map);
+}
+
+function showPlacePopup(place){
+  // Legacy - kept for compatibility
+  showPlacePopupNew(place, 0, 0);
+}
+
+function showPlacePopupNew(place, fallbackLat, fallbackLng){
+  // New Places API format
+  const name = place.displayName || place.name || '';
+  const addr = place.formattedAddress || place.formatted_address || '';
+  const rating = place.rating ? `⭐ ${place.rating}` : '';
+  let lat, lng;
+  try{
+    lat = place.location?.lat() ?? fallbackLat;
+    lng = place.location?.lng() ?? fallbackLng;
+  }catch(e){
+    lat = fallbackLat; lng = fallbackLng;
+  }
+  const isOpen = place.regularOpeningHours?.isOpen?.();
+  const hours = isOpen === true ? '🟢 現在開放' : isOpen === false ? '🔴 現在關閉' : '';
+  const safeN = name.replace(/'/g,"\'").replace(/"/g,'&quot;');
+
+  const content = `<div style="min-width:220px;font-family:inherit">
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px">${name}</div>
+    ${rating?`<div style="font-size:12px;color:#f59e0b;margin-bottom:2px">${rating}</div>`:''}
+    ${hours?`<div style="font-size:12px;margin-bottom:4px">${hours}</div>`:''}
+    <div style="font-size:11px;color:#888;margin-bottom:10px">${addr}</div>
+    <button onclick="quickAddSpot('${safeN}',${lat},${lng})"
+      style="width:100%;padding:8px;background:#2C6E49;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">
+      ＋ 加入景點庫
+    </button>
+  </div>`;
+  G_infoWindow.setContent(content);
+  G_infoWindow.setPosition({lat, lng});
+  G_infoWindow.open(G.map);
+}
+
+function quickAddSpot(name, lat, lng){
+  G_infoWindow.close();
+  // Open spot modal with pre-filled data
+  openM('spot');
+  setTimeout(()=>{
+    if(name) document.getElementById('sname').value = name;
+    G.plat = lat; G.plng = lng;
+    const el = document.getElementById('gmres');
+    if(el){el.textContent=`✅ 座標已取得 (${lat.toFixed(4)}, ${lng.toFixed(4)})`;el.className='gres2 ok';}
+  }, 100);
+}
+
+function renderMkrs(){
+  if(!G.map) return;
+  // Clear existing markers
+  G_markers.forEach(m=>m.setMap(null));
+  G_markers = [];
+
+  // Get days to show
+  const filterDay = G._dayFilter;
+  let targetDays = filterDay ? G.days.filter(d=>d.id===filterDay) : G.days;
+
+  // Add spot markers
+  G.spots.forEach(sp=>{
+    if(!sp.lat||!sp.lng) return;
+    const clr = {nature:'#2C6E49',food:'#E07A5F',activity:'#F4A261',city:'#1D6FA4'}[sp.cat]||'#888';
+    const marker = new google.maps.Marker({
+      position:{lat:+sp.lat,lng:+sp.lng},
+      map: G.map,
+      title: sp.name,
+      icon:{
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: clr,
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 2,
+      }
+    });
+    marker.addListener('click', ()=>{
+      const content=`<div style="min-width:180px;font-family:inherit">
+        <div style="font-size:14px;font-weight:600">${esc(sp.name)}</div>
+        <div style="font-size:12px;color:#666;margin-top:3px">${esc(sp.region)} · ⏱${fmtH(sp.dur)}</div>
+        ${sp.note?`<div style="font-size:11px;color:#888;margin-top:4px">${esc(sp.note)}</div>`:''}
+      </div>`;
+      G_infoWindow.setContent(content);
+      G_infoWindow.open(G.map, marker);
+    });
+    G_markers.push(marker);
+  });
+
+  // Draw route for itinerary days
+  targetDays.forEach(day=>{
+    const pts = (day.stops||[]).map(st=>{
+      const sp=G.spots.find(x=>x.id===+st.sid);
+      return sp&&sp.lat&&sp.lng?{lat:+sp.lat,lng:+sp.lng}:null;
+    }).filter(Boolean);
+    if(pts.length>1){
+      new google.maps.Polyline({
+        path: pts,
+        geodesic: true,
+        strokeColor: '#2C6E49',
+        strokeOpacity: 0.7,
+        strokeWeight: 2,
+        map: G.map
+      });
+    }
+  });
+}
+
+function focusSpot(id){
+  const sp=G.spots.find(x=>x.id===id);
+  if(!sp||!sp.lat||!sp.lng) return;
+  if(G.map){
+    G.map.setCenter({lat:+sp.lat,lng:+sp.lng});
+    G.map.setZoom(14);
+  }
+}
+
+
+// ── MOBILE ADD TO DAY ──
+let G_mobAddSpotId = null;
+
+function openMobAddDay(spotId){
+  G_mobAddSpotId = spotId;
+  const sp = G.spots.find(x=>x.id===spotId);
+  if(!sp) return;
+
+  // Show spot name
+  document.getElementById('mob-add-spot-name').textContent = '📍 ' + sp.name;
+
+  // Render day list
+  const body = document.getElementById('mob-add-day-body');
+  if(!G.days.length){
+    body.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">尚無天數，請先在電腦版設定天數</div>';
+  } else {
+    body.innerHTML = G.days.map(day=>{
+      const stops = Array.isArray(day.stops) ? day.stops : [];
+      const reg = dayReg(day);
+      return `<div class="mob-day-row" onclick="expandMobDay(${day.id}, this)">
+        <div class="mob-day-row-title">
+          第 ${day.num} 天${day.date ? ' · ' + day.date : ''}
+          <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:4px">${reg}</span>
+        </div>
+        <div class="mob-day-row-stops">${stops.length ? stops.map(st=>esc(st.name)).join(' → ') : '尚無行程'}</div>
+        <div class="mob-day-inserts" id="mob-inserts-${day.id}" style="display:none"></div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('mob-add-day-overlay').style.display = 'flex';
+}
+
+function expandMobDay(dayId, row){
+  // Toggle insert positions for this day
+  const insertDiv = document.getElementById('mob-inserts-' + dayId);
+  if(!insertDiv) return;
+
+  if(insertDiv.style.display !== 'none'){
+    insertDiv.style.display = 'none';
+    return;
+  }
+
+  const day = G.days.find(d=>d.id===dayId);
+  if(!day) return;
+  const stops = Array.isArray(day.stops) ? day.stops : [];
+
+  if(!stops.length){
+    // Empty day - just one add button
+    insertDiv.innerHTML = `<div class="mob-empty-day-btn" onclick="mobInsertSpot(${dayId}, 0)">
+      ＋ 加入此天
+    </div>`;
+  } else {
+    // Show insert positions between stops
+    let html = `<div class="mob-insert-btn" onclick="mobInsertSpot(${dayId}, 0)">
+      <div class="mob-insert-line"></div>
+      <div class="mob-insert-plus">插入最前面</div>
+      <div class="mob-insert-line"></div>
+    </div>`;
+
+    stops.forEach((st, i) => {
+      html += `<div style="padding:6px 16px;font-size:12px;color:var(--muted);background:#F7F5F0">
+        ${i+1}. ${esc(st.name)}
+      </div>`;
+      html += `<div class="mob-insert-btn" onclick="mobInsertSpot(${dayId}, ${i+1})">
+        <div class="mob-insert-line"></div>
+        <div class="mob-insert-plus">${i===stops.length-1?'插入最後面':'插入此處'}</div>
+        <div class="mob-insert-line"></div>
+      </div>`;
+    });
+
+    insertDiv.innerHTML = html;
+  }
+
+  insertDiv.style.display = 'block';
+}
+
+function mobInsertSpot(dayId, position){
+  const day = G.days.find(d=>d.id===dayId);
+  const sp = G.spots.find(x=>x.id===G_mobAddSpotId);
+  if(!day||!sp) return;
+
+  const stops = Array.isArray(day.stops) ? day.stops : [];
+  const newStop = {id:Date.now(), sid:sp.id, name:sp.name, dur:sp.dur, startTime:'', note:''};
+  stops.splice(position, 0, newStop);
+  day.stops = stops;
+
+  closeMobAddDay();
+  renderMobContent(); // refresh mobile view
+  autoSave();
+
+  // Show confirmation
+  setSt('ok', sp.name + ' 已加入第' + day.num + '天');
+}
+
+function closeMobAddDay(e){
+  if(e && e.target !== document.getElementById('mob-add-day-overlay')) return;
+  document.getElementById('mob-add-day-overlay').style.display = 'none';
+  G_mobAddSpotId = null;
+}
+
+
+// ── MAP SEARCH ──
+let G_searchService = null;
+let G_autocomplete = null;
+
+let _autocomplete = null;
+let _searchTimer = null;
+
+function initMapSearch(){
+  if(!google?.maps?.places) return;
+  const input = document.getElementById('map-search-input');
+  if(!input) return;
+
+  // Use Google Places Autocomplete
+  _autocomplete = new google.maps.places.Autocomplete(input, {
+    fields: ['name','geometry','formatted_address','rating','opening_hours','types'],
+    language: 'zh-TW'
+  });
+
+  // Bias to current map center
+  if(G.map) _autocomplete.bindTo('bounds', G.map);
+
+  // When user selects a suggestion
+  _autocomplete.addListener('place_changed', ()=>{
+    const place = _autocomplete.getPlace();
+    if(!place.geometry) return;
+    const lat = place.geometry.location.lat();
+    const lng = place.geometry.location.lng();
+    const name = place.name || input.value;
+
+    // Fly map to location
+    if(G.map){
+      G.map.setCenter({lat, lng});
+      G.map.setZoom(16);
+    }
+
+    // Show add popup
+    const rating = place.rating ? '⭐ '+place.rating : '';
+    const addr = place.formatted_address || '';
+    const safeN = name.replace(/'/g,"\'").replace(/"/g,'&quot;');
+    const content = `<div style="min-width:220px;font-family:inherit">
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px">${esc(name)}</div>
+      ${rating?`<div style="font-size:12px;color:#f59e0b;margin-bottom:2px">${rating}</div>`:''}
+      <div style="font-size:11px;color:#888;margin-bottom:10px">${esc(addr)}</div>
+      <button onclick="quickAddSpot('${safeN}',${lat},${lng})"
+        style="width:100%;padding:8px;background:#2C6E49;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">
+        ＋ 加入景點庫
+      </button>
+    </div>`;
+    if(G_infoWindow && G.map){
+      G_infoWindow.setContent(content);
+      G_infoWindow.setPosition({lat,lng});
+      G_infoWindow.open(G.map);
+    }
+  });
+
+  // Bind search button
+  const btn = document.getElementById('map-search-btn');
+  if(btn) btn.addEventListener('click', searchMapPlace);
+
+  // Enter key
+  input.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ e.preventDefault(); searchMapPlace(); }
+  });
+}
+
+function debounceSearch(){
+  clearTimeout(_searchTimer);
+  const q = document.getElementById('map-search-input').value.trim();
+  if(!q){ hideSearchResults(); return; }
+  _searchTimer = setTimeout(()=>searchMapPlace(), 500);
+}
+
+async function searchMapPlace(){
+  const q = document.getElementById('map-search-input').value.trim();
+  if(!q){ alert('請輸入景點名稱'); return; }
+
+  const resultsEl = document.getElementById('map-search-results');
+  if(!resultsEl){ console.error('results div not found'); return; }
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#888">搜尋中…</div>';
+
+  try{
+    if(!google?.maps?.importLibrary){ resultsEl.innerHTML='<div style="padding:12px;color:red">地圖未載入，請重新整理</div>'; return; }
+    const {Place} = await google.maps.importLibrary('places');
+    
+    // Get current map center as location bias
+    const center = G.map ? G.map.getCenter() : null;
+    
+    const request = {
+      textQuery: q,
+      fields: ['displayName','location','formattedAddress','rating','types'],
+      locationBias: center ? {
+        center: center,
+        radius: 50000 // 50km radius bias (max allowed)
+      } : undefined,
+      maxResultCount: 6,
+      language: 'zh-TW'
+    };
+
+    const {places} = await Place.searchByText(request);
+    
+    if(!places || !places.length){
+      resultsEl.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#888">找不到結果，試試英文名稱</div>';
+      return;
+    }
+
+    resultsEl.innerHTML = places.map((p,i) => {
+      const name = p.displayName || '';
+      const addr = p.formattedAddress || '';
+      const lat = p.location?.lat();
+      const lng = p.location?.lng();
+      const icon = getPlaceIcon(p.types || []);
+      return `<div class="map-search-result" onclick="selectSearchResult(${i})">
+        <div class="map-search-result-icon">${icon}</div>
+        <div>
+          <div class="map-search-result-name">${esc(name)}</div>
+          <div class="map-search-result-addr">${esc(addr)}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Store results for selection
+    window._searchResults = places;
+
+  }catch(err){
+    console.error('Search error:', err);
+    resultsEl.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#c00">搜尋失敗，請確認網路</div>';
+  }
+}
+
+function getPlaceIcon(types){
+  if(types.includes('restaurant')||types.includes('food')) return '🍽️';
+  if(types.includes('lodging')) return '🏨';
+  if(types.includes('natural_feature')||types.includes('park')) return '🏔️';
+  if(types.includes('museum')) return '🏛️';
+  if(types.includes('airport')) return '✈️';
+  if(types.includes('tourist_attraction')) return '📍';
+  return '📌';
+}
+
+function selectSearchResult(index){
+  const place = window._searchResults?.[index];
+  if(!place) return;
+
+  const lat = place.location?.lat();
+  const lng = place.location?.lng();
+  const name = place.displayName || '';
+  const addr = place.formattedAddress || '';
+
+  // Hide search results
+  hideSearchResults();
+  document.getElementById('map-search-input').value = name;
+
+  // Fly map to location
+  if(G.map && lat && lng){
+    G.map.setCenter({lat, lng});
+    G.map.setZoom(16);
+  }
+
+  // Show popup to add to library
+  const rating = place.rating ? '⭐ '+place.rating : '';
+  const safeN = name.replace(/'/g,"\'").replace(/"/g,'&quot;');
+  const content = `<div style="min-width:220px;font-family:inherit">
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px">${esc(name)}</div>
+    ${rating?`<div style="font-size:12px;color:#f59e0b;margin-bottom:2px">${rating}</div>`:''}
+    <div style="font-size:11px;color:#888;margin-bottom:10px">${esc(addr)}</div>
+    <button onclick="quickAddSpot('${safeN}',${lat},${lng})"
+      style="width:100%;padding:8px;background:#2C6E49;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">
+      ＋ 加入景點庫
+    </button>
+  </div>`;
+  if(G_infoWindow && G.map){
+    G_infoWindow.setContent(content);
+    G_infoWindow.setPosition({lat, lng});
+    G_infoWindow.open(G.map);
+  }
+}
+
+function hideSearchResults(){
+  const el = document.getElementById('map-search-results');
+  if(el) el.style.display = 'none';
+  window._searchResults = null;
+}
+
+// Close search results when clicking elsewhere
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('.map-search-wrap')) hideSearchResults();
+});
+
 </script>
 
 <!-- PROJECT PICKER SCREEN -->
@@ -2219,6 +2822,18 @@ async function restoreBackup(){
       <button class="proj-btn" onclick="closeProjModal()">取消</button>
       <button class="proj-btn proj-btn-primary" onclick="createProject()">建立專案</button>
     </div>
+  </div>
+</div>
+
+<!-- MOBILE ADD TO DAY OVERLAY -->
+<div id="mob-add-day-overlay" class="mob-add-day-overlay" style="display:none" onclick="closeMobAddDay(event)">
+  <div class="mob-add-day-sheet" onclick="event.stopPropagation()">
+    <div class="mob-add-day-header">
+      <div class="mob-add-day-title">選擇加入的天數</div>
+      <button class="mob-add-day-close" onclick="closeMobAddDay()">✕</button>
+    </div>
+    <div class="mob-add-day-spotname" id="mob-add-spot-name"></div>
+    <div class="mob-add-day-body" id="mob-add-day-body"></div>
   </div>
 </div>
 </body>
