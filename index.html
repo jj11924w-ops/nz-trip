@@ -194,6 +194,9 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
   overflow:hidden;
   background:var(--bg);
 }
+#mob-main .mob-content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;min-height:0}
+#mob-map-view{flex:1;min-height:0}
+
 .mob-tabnav{
   display:flex;
   background:var(--panel);
@@ -420,6 +423,13 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
 .pac-container {
   z-index: 9999 !important;
 }
+
+/* ── MOBILE MAP VIEW ── */
+#mob-map-view{display:none}
+@media(max-width:700px){
+  #mob-map-view.active{display:flex!important;flex-direction:column;flex:1;overflow:hidden}
+  #mob-gmap{flex:1;min-height:0}
+}
 </style>
 
 <!-- Firebase SDK -->
@@ -545,6 +555,9 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
     <button class="mob-tabnav-btn" id="mtn-spots" onclick="mobSwitch('spots',this)">
       <span class="icon">🗺</span>景點庫
     </button>
+    <button class="mob-tabnav-btn" id="mtn-map" onclick="mobSwitch('map',this)">
+      <span class="icon">🗾</span>地圖
+    </button>
     <button class="mob-tabnav-btn" id="mtn-budget" onclick="mobSwitch('budget',this)">
       <span class="icon">💰</span>分帳
     </button>
@@ -552,6 +565,22 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
       <span class="icon">✈️</span>切換
   </div>
   <div class="mob-content" id="mob-content"></div>
+  <!-- Mobile Map View -->
+  <div id="mob-map-view" style="display:none;flex:1;flex-direction:column;overflow:hidden;position:relative">
+    <div id="mob-day-bar" style="background:var(--accent);padding:8px 12px;display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;min-height:44px"></div>
+    <div id="mob-gmap" style="flex:1"></div>
+    <button onclick="toggleMobMapList()" id="mob-list-toggle"
+      style="position:absolute;bottom:16px;right:16px;z-index:10;background:#fff;border:none;border-radius:20px;padding:9px 16px;box-shadow:0 2px 10px rgba(0,0,0,.3);cursor:pointer;font-size:13px;font-weight:500">
+      📋 今日行程
+    </button>
+    <div id="mob-day-list" style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:16px 16px 0 0;max-height:60%;overflow-y:auto;transform:translateY(100%);transition:transform .3s ease;box-shadow:0 -4px 20px rgba(0,0,0,.15);z-index:20">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff">
+        <div id="mob-day-list-title" style="font-size:14px;font-weight:600"></div>
+        <button onclick="toggleMobMapList()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+      </div>
+      <div id="mob-day-list-content"></div>
+    </div>
+  </div>
 </div>
 
 <!-- MOBILE EDIT OVERLAY (full screen edit mode) -->
@@ -980,31 +1009,51 @@ function _mobHeader(title,editLabel){
     :`<button class="mob-sheet-btn primary" onclick="setMobEditMode(true)">${editLabel||'編輯'}</button>`;
   return `<div class="mob-sheet-header"><div class="mob-sheet-title">${title}</div><div class="mob-sheet-actions">${btn}</div></div>`;
 }
-function renderMobSpots(el){
-  const chips=['all','nature','food','activity','city'].map(f=>`<button class="chip${G.filt===f?' on':''}" onclick="filt('${f}',this);renderMobContent()" style="font-size:11px;padding:3px 8px">${{all:'全部',nature:'自然',food:'美食',activity:'活動',city:'城市'}[f]}</button>`).join('');
-  const list=G.spots.filter(s=>(G.filt==='all'||s.cat===G.filt)&&(!G._regionFilt||rk(s.region)===G._regionFilt));
-  const cards=list.map(s=>{
-    const actions=G.mobEditMode
-      ?`<div style="display:flex;gap:5px;flex-shrink:0">
-          <button class="mob-sheet-btn" onclick="editSpot(${s.id})">編輯</button>
-          <button class="mob-sheet-btn" style="color:#DC2626;border-color:#FCA5A5" onclick="deleteSpot(${s.id})">刪除</button>
+function renderMobSpots(){
+  const editToggle = G.mobEditMode
+    ? `<button onclick="G.mobEditMode=false;renderMobContent()" style="font-size:12px;padding:5px 14px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer">完成</button>`
+    : `<button onclick="G.mobEditMode=true;renderMobContent()" style="font-size:12px;padding:5px 14px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted)">✏️ 編輯</button>`;
+
+  const header = `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0;z-index:2">
+    <div style="font-size:14px;font-weight:600">🗺 景點庫</div>
+    ${editToggle}
+  </div>`;
+
+  const chips = ['all','nature','food','activity','city'].map(f=>
+    `<button class="chip${G.filt===f?' on':''}" onclick="filt('${f}',this);renderMobContent()" style="font-size:11px;padding:3px 8px">
+      ${{all:'全部',nature:'自然',food:'美食',activity:'活動',city:'城市'}[f]}
+    </button>`
+  ).join('');
+
+  const list = G.spots.filter(s=>(G.filt==='all'||s.cat===G.filt)&&(!G._regionFilt||rk(s.region)===G._regionFilt));
+
+  const cards = list.map(s=>{
+    const btns = G.mobEditMode
+      ? `<div style="display:flex;gap:5px;flex-shrink:0">
+          <button onclick="editSpot(${s.id})" style="font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:none;cursor:pointer">編輯</button>
+          <button onclick="deleteSpot(${s.id});renderMobContent()" style="font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid #FCA5A5;color:#DC2626;background:none;cursor:pointer">刪除</button>
         </div>`
-      :`<div style="display:flex;gap:5px;flex-shrink:0">
-          <button class="mob-sheet-btn primary" onclick="openMobAddDay(${s.id})">＋ 加入行程</button>
-          <button class="mob-sheet-btn" onclick="focusSpot(${s.id})">地圖</button>
-        </div>`;
-    return `<div class="mob-spot-card">
-      <div class="mob-spot-card-info">
-        <div class="mob-spot-card-name">${CICO[s.cat]} ${esc(s.name)}</div>
-        <div class="mob-spot-card-meta">${esc(s.region)} · ⏱${fmtH(s.dur)}${s.cost?' · NZD '+s.cost:''}</div>
-        ${s.note?`<div class="mob-spot-card-meta">${esc(s.note)}</div>`:''}
-      </div>${actions}
+      : `<button onclick="openMobAddDay(${s.id})" style="font-size:11px;padding:5px 12px;border-radius:5px;border:none;background:var(--accent);color:#fff;cursor:pointer;white-space:nowrap;font-weight:500">＋ 加入行程</button>`;
+    return `<div style="padding:10px 14px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${CICO[s.cat]} ${esc(s.name)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(s.region)} · ⏱${fmtH(s.dur)}${s.cost?' · NZD '+s.cost:''}</div>
+        </div>
+        <div style="flex-shrink:0">${btns}</div>
+      </div>
+      ${s.note?`<div style="font-size:11px;color:var(--muted);margin-top:4px;padding-left:2px">${esc(s.note)}</div>`:''}
     </div>`;
   }).join('');
-  const addBtn=G.mobEditMode?`<button class="mob-add-btn" onclick="openM('spot')">＋ 新增景點</button>`:'';
-  el.innerHTML=_mobHeader('🗺 景點庫')+
-    `<div style="padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap">${chips}</div>`+
-    `<div>${cards||'<div class="empty" style="padding:20px">尚無景點</div>'}</div>`+addBtn;
+
+  const addBtn = G.mobEditMode
+    ? `<button onclick="openM('spot')" style="margin:10px 14px;padding:10px;border-radius:8px;border:1px dashed var(--border);background:none;color:var(--muted);font-size:13px;cursor:pointer;width:calc(100% - 28px);text-align:center">＋ 新增景點</button>`
+    : '';
+
+  return header
+    + `<div style="padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap">${chips}</div>`
+    + (cards || '<div style="padding:32px;text-align:center;color:var(--muted);font-size:13px">尚無景點</div>')
+    + addBtn;
 }
 function renderMobItinerary(el){
   let content='';
@@ -1666,7 +1715,17 @@ function mobSwitch(tab, btn){
   G_mobTab=tab;
   document.querySelectorAll('.mob-tabnav-btn').forEach(b=>b.classList.remove('on'));
   if(btn)btn.classList.add('on');
-  renderMobContent();
+  const mapView = document.getElementById('mob-map-view');
+  const content = document.getElementById('mob-content');
+  if(tab==='map'){
+    if(mapView) mapView.style.display='flex';
+    if(content) content.style.display='none';
+    initMobMap();
+  } else {
+    if(mapView) mapView.style.display='none';
+    if(content) content.style.display='block';
+    renderMobContent();
+  }
 }
 function renderMobContent(){
   const el=document.getElementById('mob-content');
@@ -2425,24 +2484,34 @@ function renderMkrs(){
   // Clear existing markers
   G_markers.forEach(m=>m.setMap(null));
   G_markers = [];
+  // Clear day stop markers
+  if(G._markers){ G._markers.forEach(m=>m.setMap(null)); }
+  G._markers = [];
+  // Clear existing polylines
+  if(G._polylines){ G._polylines.forEach(p=>p.setMap(null)); }
+  G._polylines = [];
 
-  // Get days to show
-  const filterDay = G._dayFilter;
+  // Get days to show - use G.activeDay (set by day filter bar)
+  const filterDay = G.activeDay || G._dayFilter;
   let targetDays = filterDay ? G.days.filter(d=>d.id===filterDay) : G.days;
 
-  // Add spot markers
+  // Collect spot ids from targetDays only (for highlighting)
+  const itinSpotIds = new Set(targetDays.flatMap(d=>(d.stops||[]).map(st=>+st.sid)));
+
+  // Add spot markers (only spots in current view)
   G.spots.forEach(sp=>{
     if(!sp.lat||!sp.lng) return;
     const clr = {nature:'#2C6E49',food:'#E07A5F',activity:'#F4A261',city:'#1D6FA4'}[sp.cat]||'#888';
+    const inItin = itinSpotIds.has(sp.id);
     const marker = new google.maps.Marker({
       position:{lat:+sp.lat,lng:+sp.lng},
       map: G.map,
       title: sp.name,
       icon:{
         path: google.maps.SymbolPath.CIRCLE,
-        scale: 10,
+        scale: inItin ? 10 : 7,
         fillColor: clr,
-        fillOpacity: 1,
+        fillOpacity: inItin ? 1 : 0.5,
         strokeColor: '#fff',
         strokeWeight: 2,
       }
@@ -2459,22 +2528,48 @@ function renderMkrs(){
     G_markers.push(marker);
   });
 
-  // Draw route for itinerary days
-  targetDays.forEach(day=>{
-    const pts = (day.stops||[]).map(st=>{
+  // Draw route for each day SEPARATELY with numbered stop markers
+  const dayColors = ['#2C6E49','#1D6FA4','#E07A5F','#F4A261','#9B59B6','#E74C3C','#2ECC71'];
+  targetDays.forEach((day,di)=>{
+    const clr = dayColors[di%dayColors.length];
+    const stops = Array.isArray(day.stops)?day.stops:[];
+    const ptsData = stops.map((st,si)=>{
       const sp=G.spots.find(x=>x.id===+st.sid);
-      return sp&&sp.lat&&sp.lng?{lat:+sp.lat,lng:+sp.lng}:null;
+      if(!sp||!sp.lat||!sp.lng) return null;
+      return {lat:+sp.lat, lng:+sp.lng, name:sp.name, order:si+1, day:day.num};
     }).filter(Boolean);
-    if(pts.length>1){
-      new google.maps.Polyline({
-        path: pts,
+
+    if(ptsData.length>1){
+      // Draw polyline for this day only
+      const poly = new google.maps.Polyline({
+        path: ptsData.map(p=>({lat:p.lat,lng:p.lng})),
         geodesic: true,
-        strokeColor: '#2C6E49',
-        strokeOpacity: 0.7,
-        strokeWeight: 2,
+        strokeColor: clr,
+        strokeOpacity: 0.85,
+        strokeWeight: 3,
         map: G.map
       });
+      G._polylines.push(poly);
     }
+
+    // Add numbered stop markers on top of spot markers
+    ptsData.forEach(p=>{
+      const stopMarker = new google.maps.Marker({
+        position:{lat:p.lat,lng:p.lng},
+        map: G.map,
+        label:{text:'D'+p.day+'-'+p.order, color:'#fff', fontSize:'9px', fontWeight:'700'},
+        icon:{
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: clr,
+          fillOpacity: 1,
+          strokeColor: '#fff',
+          strokeWeight: 2,
+        },
+        zIndex: 10
+      });
+      G._markers.push(stopMarker);
+    });
   });
 }
 
@@ -2778,6 +2873,150 @@ function hideSearchResults(){
 document.addEventListener('click', (e)=>{
   if(!e.target.closest('.map-search-wrap')) hideSearchResults();
 });
+
+
+// ── MOBILE MAP ──
+let G_mobMap = null;
+let G_mobMapListOpen = false;
+let G_mobMapDay = null;
+
+function initMobMap(){
+  if(!isMobile()) return;
+  const mapEl = document.getElementById('mob-gmap');
+  if(!mapEl) return;
+
+  // init map if not yet done
+  if(!G_mobMap && typeof google !== 'undefined'){
+    const proj = G_PROJ.current;
+    let center = {lat:-44.5,lng:169.5}, zoom = 7;
+    if(proj){
+      const dest=(proj.destination||'').toLowerCase();
+      if(dest.includes('日本'))     {center={lat:35.6762,lng:139.6503};zoom=6;}
+      else if(dest.includes('泰國')) {center={lat:13.7563,lng:100.5018};zoom=6;}
+      else if(dest.includes('韓國')) {center={lat:37.5665,lng:126.9780};zoom=7;}
+      else if(dest.includes('歐洲')) {center={lat:48.8566,lng:2.3522};zoom=5;}
+    }
+    G_mobMap = new google.maps.Map(mapEl, {
+      center, zoom,
+      mapTypeControl:false, streetViewControl:false, fullscreenControl:false,
+      zoomControl:true
+    });
+  }
+
+  // Render day selector
+  renderMobDayBar();
+  // Show today's stops on map
+  showMobMapDay(G._mobDay||1);
+}
+
+function renderMobDayBar(){
+  const bar = document.getElementById('mob-day-bar');
+  if(!bar) return;
+  const daysWithStops = G.days.filter(d=>d.stops.length);
+  if(!daysWithStops.length){ bar.innerHTML='<div style="color:rgba(255,255,255,.7);font-size:12px;padding:4px 0">尚無行程</div>'; return; }
+
+  bar.innerHTML = daysWithStops.map(d=>`
+    <button onclick="showMobMapDay(${d.num})" id="mob-day-btn-${d.num}"
+      style="flex-shrink:0;padding:5px 14px;border-radius:20px;border:none;font-size:12px;cursor:pointer;
+        font-weight:${G._mobDay===d.num?'600':'400'};
+        background:${G._mobDay===d.num?'#fff':'rgba(255,255,255,0.2)'};
+        color:${G._mobDay===d.num?'var(--accent)':'rgba(255,255,255,0.9)'}">
+      第${d.num}天${d.date?' '+d.date:''}
+    </button>`).join('');
+}
+
+function showMobMapDay(dayNum){
+  G._mobDay = dayNum;
+  G_mobMapDay = dayNum;
+  renderMobDayBar();
+
+  const day = G.days.find(d=>d.num===dayNum);
+  if(!day||!G_mobMap) return;
+
+  // Clear old markers
+  if(G._mobMapMarkers){ G._mobMapMarkers.forEach(m=>m.setMap(null)); }
+  G._mobMapMarkers = [];
+
+  const stops = Array.isArray(day.stops)?day.stops:[];
+  const pts = [];
+
+  stops.forEach((st,i)=>{
+    const sp = G.spots.find(x=>x.id===+st.sid);
+    if(!sp||!sp.lat||!sp.lng) return;
+    const lat=+sp.lat, lng=+sp.lng;
+    pts.push({lat,lng});
+    const clr = {nature:'#2C6E49',food:'#E07A5F',activity:'#F4A261',city:'#1D6FA4'}[sp.cat]||'#888';
+    const marker = new google.maps.Marker({
+      position:{lat,lng}, map:G_mobMap, title:sp.name,
+      label:{text:String(i+1),color:'#fff',fontSize:'12px',fontWeight:'600'},
+      icon:{path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:clr,fillOpacity:1,strokeColor:'#fff',strokeWeight:2}
+    });
+    // Click marker to show info
+    (function(spot, stopObj, idx){
+      marker.addListener('click', ()=>{
+        const navUrl=spot.lat&&spot.lng?`https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}&travelmode=driving`:'';
+        const dt=stopObj.startTime||'';
+        if(!G._mobInfoWindow) G._mobInfoWindow=new google.maps.InfoWindow();
+        G._mobInfoWindow.setContent(`<div style="font-family:inherit;min-width:160px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">${esc(spot.name)}</div>
+          <div style="font-size:11px;color:#666;margin-bottom:8px">${dt?'⏰ '+dt+' · ':''}⏱ ${fmtH(stopObj.dur)}</div>
+          ${navUrl?`<a href="${navUrl}" target="_blank" style="display:block;text-align:center;padding:7px;background:#2C6E49;color:#fff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:500">📍 Google Maps 導航</a>`:''}
+        </div>`);
+        G._mobInfoWindow.open(G_mobMap, marker);
+      });
+    })(sp, st, i);
+    G._mobMapMarkers.push(marker);
+  });
+
+  // Draw route
+  if(pts.length>1){
+    if(G._mobPolyline) G._mobPolyline.setMap(null);
+    G._mobPolyline = new google.maps.Polyline({
+      path:pts, geodesic:true, strokeColor:'#2C6E49', strokeOpacity:.7, strokeWeight:2, map:G_mobMap
+    });
+  }
+
+  // Fit bounds
+  if(pts.length>0){
+    const bounds = new google.maps.LatLngBounds();
+    pts.forEach(p=>bounds.extend(p));
+    G_mobMap.fitBounds(bounds, {top:60,bottom:80,left:20,right:20});
+  }
+
+  // Update list
+  updateMobDayList(day);
+}
+
+function updateMobDayList(day){
+  const title = document.getElementById('mob-day-list-title');
+  const content = document.getElementById('mob-day-list-content');
+  if(!title||!content) return;
+  const stops = Array.isArray(day.stops)?day.stops:[];
+  title.textContent = `第 ${day.num} 天${day.date?' · '+day.date:''} · ${stops.length} 個景點`;
+  content.innerHTML = stops.map((st,i)=>{
+    const sp = G.spots.find(x=>x.id===+st.sid);
+    const dt = st.startTime||computeTime(day,i);
+    const navUrl = sp&&sp.lat&&sp.lng?`https://www.google.com/maps/dir/?api=1&destination=${sp.lat},${sp.lng}&travelmode=driving`:'';
+    return `<div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px"
+      onclick="G_mobMap&&G_mobMap.setCenter({lat:${+sp?.lat||0},lng:${+sp?.lng||0}});G_mobMap&&G_mobMap.setZoom(16)">
+      <div style="width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0">${i+1}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">${CICO[sp?sp.cat:'city']} ${esc(st.name)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${dt} · 停留 ${fmtH(st.dur)}</div>
+      </div>
+      ${navUrl?`<a href="${navUrl}" target="_blank" onclick="event.stopPropagation()"
+        style="padding:6px 10px;background:var(--accent);color:#fff;border-radius:6px;text-decoration:none;font-size:11px;flex-shrink:0">📍</a>`:''}
+    </div>`;
+  }).join('') || '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">尚無景點</div>';
+}
+
+function toggleMobMapList(){
+  G_mobMapListOpen = !G_mobMapListOpen;
+  const list = document.getElementById('mob-day-list');
+  const btn = document.getElementById('mob-list-toggle');
+  if(list) list.style.transform = G_mobMapListOpen ? 'translateY(0)' : 'translateY(100%)';
+  if(btn) btn.textContent = G_mobMapListOpen ? '✕ 關閉' : '📋 今日行程';
+}
 
 </script>
 
