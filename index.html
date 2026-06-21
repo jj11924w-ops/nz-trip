@@ -26,7 +26,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
 .lpanel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
 .ltab{flex:1;padding:8px 0;font-size:12px;text-align:center;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:2px solid transparent}
 .ltab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
-.map-wrap{flex:1;position:relative;overflow:hidden}
+.map-wrap{flex:1;position:relative;overflow:visible}
 #map{width:100%;height:100%}
 .rdrawer{width:0;overflow:hidden;background:var(--panel);border-left:1px solid var(--border);transition:width .25s ease;display:flex;flex-direction:column;flex-shrink:0;z-index:10}
 .rdrawer.open{width:340px}
@@ -477,17 +477,8 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
       <button class="ltab on" onclick="ltab('spots',this)">🗺 景點庫</button>
       <button class="ltab" onclick="ltab('budget',this)">💰 分帳</button>
     </div>
-    <div id="lsec-spots" style="display:flex;flex-direction:column;flex:1;overflow:visible;position:relative">
-      <!-- Map Search -->
-      <div style="padding:8px 10px 4px;border-bottom:1px solid var(--border);position:relative;z-index:50">
-        <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:7px;background:#fff;padding:0 10px;gap:6px">
-          <span style="color:var(--muted);font-size:14px">🔍</span>
-          <input id="map-search-input" 
-            placeholder="搜尋景點，選擇後加入景點庫..."
-            style="flex:1;padding:9px 0;font-size:13px;border:none;outline:none;font-family:inherit;background:transparent">
-        </div>
-        <div id="map-search-results" style="position:absolute;left:10px;right:10px;top:100%;margin-top:2px;background:#fff;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);max-height:280px;overflow-y:auto;display:none;border:1px solid var(--border);z-index:100"></div>
-      </div>
+    <div id="lsec-spots" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+
       <div class="frow" id="cat-frow">
         <button class="chip on" onclick="filt('all',this)">全部</button>
         <button class="chip" onclick="filt('nature',this)">自然</button>
@@ -499,7 +490,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
         <button class="chip on" onclick="filtRegion('all',this)">所有地區</button>
       </div>
       <div class="frow" id="region-chips" style="padding-top:4px;display:none"></div>
-      <div class="slist" id="slist" style="overflow-y:auto;flex:1"></div>
+      <div class="slist" id="slist"></div>
       <div class="drag-hint">☝ 拖曳景點卡片到右側行程</div>
       <button class="addrow" onclick="openM('spot')">＋ 新增景點</button>
     </div>
@@ -509,6 +500,16 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
   </div>
 
   <div class="map-wrap">
+    <!-- Floating search bar on map -->
+    <div id="map-search-container" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:20;width:min(400px,calc(100% - 24px));pointer-events:all">
+      <div style="display:flex;align-items:center;background:#fff;border-radius:24px;box-shadow:0 2px 12px rgba(0,0,0,.3);padding:0 14px;gap:8px">
+        <span style="color:#666;font-size:15px">🔍</span>
+        <input id="map-search-input"
+          placeholder="搜尋景點..."
+          style="flex:1;padding:10px 0;font-size:14px;border:none;outline:none;font-family:inherit;background:transparent">
+      </div>
+      <div id="map-search-results" style="margin-top:4px;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.2);max-height:280px;overflow-y:auto;display:none;border:1px solid #e8e0d5"></div>
+    </div>
     <div id="map"></div>
     <div class="day-filter-bar" id="day-filter-bar"></div>
     <div class="mleg">
