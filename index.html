@@ -194,7 +194,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
   overflow:hidden;
   background:var(--bg);
 }
-#mob-main .mob-content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;min-height:0}
+#mob-main .mob-content{flex:1;overflow:hidden;min-height:0;display:flex;flex-direction:column}
 #mob-map-view{flex:1;min-height:0}
 
 .mob-tabnav{
@@ -430,6 +430,10 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
   #mob-map-view.active{display:flex!important;flex-direction:column;flex:1;overflow:hidden}
   #mob-gmap{flex:1;min-height:0}
 }
+
+@keyframes fadeIn{from{opacity:0;transform:translate(-50%,-55%)}to{opacity:1;transform:translate(-50%,-50%)}}
+@keyframes overlayIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 4px #F59E0B,0 0 20px rgba(245,158,11,.4)}50%{box-shadow:0 0 0 6px #F59E0B,0 0 30px rgba(245,158,11,.8)}}
 </style>
 
 <!-- Firebase SDK -->
@@ -478,6 +482,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
     <button onclick="restoreBackup()" title="復原備份" style="margin-left:4px;font-size:11px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted)">↩ 復原</button>
     <button onclick="loadFromSheets()" title="重新載入" style="font-size:11px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted)">↻ 載入</button>
     <button onclick="push()" style="font-size:11px;padding:3px 10px;border-radius:5px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-weight:500">💾 儲存</button>
+    <button onclick="toggleEditMode()" id="edit-mode-btn" style="font-size:11px;padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted)">👁 預覽</button>
   </div>
 </div>
 
@@ -501,7 +506,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
       </div>
       <div class="frow" id="region-chips" style="padding-top:4px;display:none"></div>
       <div class="slist" id="slist"></div>
-      <div class="drag-hint">☝ 拖曳景點卡片到右側行程</div>
+      ${G.editMode?`<div class="drag-hint">☝ 拖曳景點卡片到右側行程</div>`:``}
       <button class="addrow" onclick="openM('spot')">＋ 新增景點</button>
     </div>
     <div id="lsec-budget" style="display:none;flex-direction:column;flex:1;overflow:hidden">
@@ -535,7 +540,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
     <div class="itinerary-inner">
       <div class="ihead">
         <span class="ihead-title">📅 行程安排</span>
-        <button class="adddaybtn" onclick="addDay()">＋ 天數</button>
+        <button id="add-day-btn" class="adddaybtn" onclick="addDay()">＋ 天數</button>
       </div>
       <div class="dcon" id="dcon"></div>
     </div>
@@ -573,7 +578,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
       style="position:absolute;bottom:16px;right:16px;z-index:10;background:#fff;border:none;border-radius:20px;padding:9px 16px;box-shadow:0 2px 10px rgba(0,0,0,.3);cursor:pointer;font-size:13px;font-weight:500">
       📋 今日行程
     </button>
-    <div id="mob-day-list" style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:16px 16px 0 0;max-height:60%;overflow-y:auto;transform:translateY(100%);transition:transform .3s ease;box-shadow:0 -4px 20px rgba(0,0,0,.15);z-index:20">
+    <div id="mob-day-list" style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:16px 16px 0 0;max-height:50%;overflow-y:auto;transform:translateY(100%);transition:transform .3s ease;box-shadow:0 -4px 20px rgba(0,0,0,.15);z-index:20">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff">
         <div id="mob-day-list-title" style="font-size:14px;font-weight:600"></div>
         <button onclick="toggleMobMapList()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
@@ -856,7 +861,7 @@ const G={
   spots:[],days:[],exps:[],members:[],
   filt:'all',mkrs:{},map:null,rl:null,
   plat:null,plng:null,
-  drawerOpen:true,mobSheetOpen:false,mobCurrent:'spots',mobEditMode:false,editExpId:null,driveCache:{},_mobDay:1,_regionFilt:'',currentProjectKey:'',projects:[],filtRegion:'all',
+  drawerOpen:true,editMode:false,mobSheetOpen:false,mobCurrent:'spots',mobEditMode:false,editExpId:null,driveCache:{},_mobDay:1,_regionFilt:'',currentProjectKey:'',projects:[],filtRegion:'all',
   dragSid:null,dragStopId:null,dragDayId:null,
   activeDay:null,splitMode:'equal',editSpotId:null
 };
@@ -942,6 +947,11 @@ document.addEventListener('DOMContentLoaded',function(){
   // init toggle position
   const tog=document.getElementById('rdtoggle');
   if(tog)tog.style.right=G.drawerOpen?'340px':'0px';
+  // Initialize preview mode (hide edit controls by default)
+  const addDayBtn = document.getElementById('add-day-btn');
+  if(addDayBtn) addDayBtn.style.display = 'none';
+  const dragHint = document.querySelector('.drag-hint');
+  if(dragHint) dragHint.style.display = 'none';
   // mobile init
   if(isMobile()){
     // set default day to "today" based on trip start
@@ -1050,10 +1060,14 @@ function renderMobSpots(){
     ? `<button onclick="openM('spot')" style="margin:10px 14px;padding:10px;border-radius:8px;border:1px dashed var(--border);background:none;color:var(--muted);font-size:13px;cursor:pointer;width:calc(100% - 28px);text-align:center">＋ 新增景點</button>`
     : '';
 
-  return header
-    + `<div style="padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap">${chips}</div>`
-    + (cards || '<div style="padding:32px;text-align:center;color:var(--muted);font-size:13px">尚無景點</div>')
-    + addBtn;
+  return `<div style="display:flex;flex-direction:column;height:100%">
+    ${header}
+    <div style="padding:8px 10px;border-bottom:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0">${chips}</div>
+    <div style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch">
+      ${cards || '<div style="padding:32px;text-align:center;color:var(--muted);font-size:13px">尚無景點</div>'}
+      ${addBtn}
+    </div>
+  </div>`;
 }
 function renderMobItinerary(el){
   let content='';
@@ -1284,15 +1298,15 @@ function renderStopsHTML(day){
         driveHTML=`<div class="drive-row" style="${d?'':'color:#aaa'}">🚗 開車約 ${d?fmtH(d):'計算中…'}</div>`;
       }
     }
-    return `<div class="srow" draggable="true"
-      ondragstart="onStopDragStart(event,${day.id},${st.id})"
-      ondragover="event.preventDefault();event.stopPropagation()"
-      ondrop="onStopDrop(event,${day.id},${st.id})">
+    return `<div class="srow" ${G.editMode?'draggable="true"':""}
+      ondragstart="${G.editMode?`onStopDragStart(event,${day.id},${st.id})`:'return'}"
+      ondragover="${G.editMode?'event.preventDefault();event.stopPropagation()':'return'}"
+      ondrop="${G.editMode?`onStopDrop(event,${day.id},${st.id})`:'return'}">
       <div class="srow-main">
-        <span class="srow-handle">⠿</span>
+        <span class="srow-handle" style="${G.editMode?``:`opacity:0.2;cursor:not-allowed`}">⠿</span>
         <div class="sdot2" style="background:${clr}"></div>
         <div class="srow-name">${CICO[sp?sp.cat:'city']} ${esc(st.name)}</div>
-        <button class="sdel" onclick="rmStop(${day.id},${st.id})">✕</button>
+        <button class="sdel" onclick="rmStop(${day.id},${st.id})" style="${G.editMode?``:`opacity:0.35;cursor:not-allowed`}">✕</button>
       </div>
       <div class="srow-meta">
         <span class="time-lbl">開始</span>
@@ -1300,7 +1314,7 @@ function renderStopsHTML(day){
           onchange="updateStopTime(${day.id},${st.id},this.value)">
         <span class="time-lbl">停留</span>
         <input class="dur-input" type="number" value="${st.dur}" min="0.5" max="48" step="0.5"
-          onchange="updateStopDur(${day.id},${st.id},parseFloat(this.value)||0.5)">
+          onchange="updateStopDur(${day.id},${st.id},parseFloat(this.value)||0.5)" ${G.editMode?"":"readonly"}>
         <span class="time-lbl">h</span>
       </div>
       <input class="stop-note-input" type="text" value="${esc(st.note||'')}" placeholder="備註（集合地點、票券資訊…）"
@@ -1316,9 +1330,9 @@ function renderDaysHTML(){
     const dh=calcDrv(day);const th=sh+dh;const ov=th>12;
     const isActive=G.activeDay===day.id;
     return `<div class="day-block${isActive?' active-day':''}" id="day${day.id}"
-      ondragover="onDayOver(event,${day.id})"
-      ondragleave="onDayLeave(event,${day.id})"
-      ondrop="onDayDrop(event,${day.id})">
+      ondragover="${G.editMode?`onDayOver(event,${day.id})`:'event.preventDefault()'}"
+      ondragleave="${G.editMode?`onDayLeave(event,${day.id})`:''}"
+      ondrop="${G.editMode?`onDayDrop(event,${day.id})`:'showEditHint()'}">
       <div class="dh" onclick="setActiveDay(${isActive?'null':day.id})">
         <span class="dnum">第 ${day.num} 天${day.date?' · '+day.date:''}</span>
         <span class="dtit">${dayReg(day)}</span>
@@ -1372,8 +1386,40 @@ function onStopDrop(e,dayId,stopId){
   renderAll();autoSave();
 }
 function rmStop(dayId,stopId){
+  if(!G.editMode){ showEditHint(); return; }
+  const skipConfirm = localStorage.getItem('skipDeleteConfirm')==='1';
+  if(skipConfirm){ _doRmStop(dayId,stopId); return; }
+  if(document.getElementById('delete-confirm-overlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'delete-confirm-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;animation:overlayIn .2s ease';
+  overlay.innerHTML = `<div style="background:#fff;border-radius:14px;padding:24px 28px;max-width:320px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.25);text-align:center">
+    <div style="font-size:28px;margin-bottom:12px">🗑️</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:8px;color:#333">確認刪除？</div>
+    <div style="font-size:13px;color:#666;margin-bottom:20px">此景點將從行程中移除</div>
+    <label style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#888;margin-bottom:16px;cursor:pointer">
+      <input type="checkbox" id="skip-confirm-cb" style="cursor:pointer">
+      下次不再詢問（重啟網頁後恢復）
+    </label>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button onclick="document.getElementById('delete-confirm-overlay').remove()"
+        style="padding:9px 24px;border-radius:8px;border:1px solid var(--border);background:none;cursor:pointer;font-size:13px;color:#666">取消</button>
+      <button onclick="_confirmRmStop(${dayId},${stopId})"
+        style="padding:9px 24px;border-radius:8px;border:none;background:#DC2626;color:#fff;cursor:pointer;font-size:13px;font-weight:500">確認刪除</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+}
+function _confirmRmStop(dayId,stopId){
+  const cb=document.getElementById('skip-confirm-cb');
+  if(cb&&cb.checked) localStorage.setItem('skipDeleteConfirm','1');
+  document.getElementById('delete-confirm-overlay')?.remove();
+  _doRmStop(dayId,stopId);
+}
+function _doRmStop(dayId,stopId){
   const day=G.days.find(d=>d.id===dayId);if(!day)return;
-  day.stops=day.stops.filter(s=>s.id!==stopId);
+  day.stops=(day.stops||[]).filter(s=>s.id!==+stopId);
   renderAll();autoSave();
 }
 
@@ -2905,8 +2951,15 @@ function initMobMap(){
 
   // Render day selector
   renderMobDayBar();
-  // Show today's stops on map
+  // Show today's stops on map and open list
   showMobMapDay(G._mobDay||1);
+  setTimeout(()=>{
+    G_mobMapListOpen = true;
+    const list = document.getElementById('mob-day-list');
+    const btn = document.getElementById('mob-list-toggle');
+    if(list) list.style.transform = 'translateY(0)';
+    if(btn) btn.textContent = '✕ 關閉';
+  }, 300);
 }
 
 function renderMobDayBar(){
@@ -2983,8 +3036,14 @@ function showMobMapDay(dayNum){
     G_mobMap.fitBounds(bounds, {top:60,bottom:80,left:20,right:20});
   }
 
-  // Update list
+  // Update and auto-show list
   updateMobDayList(day);
+  // Auto-open list panel
+  G_mobMapListOpen = true;
+  const list = document.getElementById('mob-day-list');
+  const btn = document.getElementById('mob-list-toggle');
+  if(list) list.style.transform = 'translateY(0)';
+  if(btn) btn.textContent = '✕ 關閉';
 }
 
 function updateMobDayList(day){
@@ -3016,6 +3075,89 @@ function toggleMobMapList(){
   const btn = document.getElementById('mob-list-toggle');
   if(list) list.style.transform = G_mobMapListOpen ? 'translateY(0)' : 'translateY(100%)';
   if(btn) btn.textContent = G_mobMapListOpen ? '✕ 關閉' : '📋 今日行程';
+}
+
+
+function toggleEditMode(){
+  G.editMode = !G.editMode;
+  const btn = document.getElementById('edit-mode-btn');
+  if(btn){
+    btn.textContent = G.editMode ? '✏️ 編輯中' : '👁 預覽';
+    btn.style.background = G.editMode ? '#FEF3C7' : 'none';
+    btn.style.borderColor = G.editMode ? '#F59E0B' : 'var(--border)';
+    btn.style.color = G.editMode ? '#D97706' : 'var(--muted)';
+  }
+  // Show/hide add day button
+  const addDayBtn = document.getElementById('add-day-btn');
+  if(addDayBtn) addDayBtn.style.display = G.editMode ? '' : 'none';
+  // Show/hide drag hint
+  const dragHint = document.querySelector('.drag-hint');
+  if(dragHint) dragHint.style.display = G.editMode ? '' : 'none';
+  renderDays(); // re-render to show/hide edit controls in stops
+}
+
+
+// ── EDIT MODE HINT ──
+function showEditHint(){
+  if(G.editMode) return;
+  if(document.getElementById('edit-hint-overlay')) return;
+
+  // Create full-screen dim overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'edit-hint-overlay';
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:8000;
+    background:rgba(0,0,0,0.6);
+    cursor:pointer;
+    animation:overlayIn .25s ease;
+  `;
+
+  // Arrow pointing up-right to the button
+  overlay.innerHTML = `
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      text-align:center;color:#fff;pointer-events:none">
+      <div style="font-size:18px;opacity:.7;margin-bottom:6px">點擊任意處關閉</div>
+    </div>
+    <div id="edit-hint-callout" style="
+      position:absolute;
+      top:58px;right:140px;
+      background:#fff;border-radius:10px;padding:12px 16px;
+      box-shadow:0 4px 20px rgba(0,0,0,.3);
+      max-width:200px;font-size:13px;color:#333;line-height:1.5;
+      pointer-events:none;
+    ">
+      <div style="font-weight:600;margin-bottom:4px">👆 點這裡</div>
+      <div style="color:#666;font-size:12px">切換到編輯模式後才能新增或刪除行程</div>
+      <!-- Arrow pointing up -->
+      <div style="position:absolute;top:-8px;right:20px;
+        width:0;height:0;
+        border-left:8px solid transparent;
+        border-right:8px solid transparent;
+        border-bottom:8px solid #fff">
+      </div>
+    </div>
+  `;
+
+  // Highlight the edit button
+  const editBtn = document.getElementById('edit-mode-btn');
+  let origStyle = '';
+  if(editBtn){
+    origStyle = editBtn.getAttribute('style')||'';
+    editBtn.style.cssText += ';position:relative;z-index:8001;box-shadow:0 0 0 4px #F59E0B,0 0 20px rgba(245,158,11,.6);background:#FEF3C7!important;border-color:#F59E0B!important;color:#D97706!important;animation:pulse 1s infinite;';
+  }
+
+  overlay.onclick = ()=>{
+    overlay.remove();
+    if(editBtn) editBtn.setAttribute('style', origStyle);
+  };
+
+  document.body.appendChild(overlay);
+
+  // Auto dismiss after 6 seconds
+  setTimeout(()=>{
+    overlay.remove();
+    if(editBtn) editBtn.setAttribute('style', origStyle);
+  }, 6000);
 }
 
 </script>
