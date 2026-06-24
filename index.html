@@ -1022,7 +1022,7 @@ function renderMobSpots(el){
         </div>`;
     return `<div class="mob-spot-card">
       <div class="mob-spot-card-info">
-        <div class="mob-spot-card-name">${CICO[s.cat]} ${esc(s.name)}</div>
+        <div class="mob-spot-card-name">${CICO[s.cat]||'📍'} ${esc(s.name)}</div>
         <div class="mob-spot-card-meta">${esc(s.region)} · ⏱${fmtH(s.dur)}${s.cost?' · NZD '+s.cost:''}</div>
         ${s.note?`<div class="mob-spot-card-meta">${esc(s.note)}</div>`:''}
       </div>${actions}
@@ -1066,7 +1066,7 @@ function renderMobItinerary(el){
           <div class="mob-stop-time">${dt}</div>
           <div style="width:8px;height:8px;border-radius:50%;background:${clr};flex-shrink:0;margin-top:4px"></div>
           <div class="mob-stop-info">
-            <div class="mob-stop-name">${CICO[sp?sp.cat:'city']} ${esc(st.name)}</div>
+            <div class="mob-stop-name">${CICO[sp?sp.cat:'city']||'📍'} ${esc(st.name)}</div>
             <div class="mob-stop-note">停留 ${fmtH(st.dur)}${st.note?' · '+esc(st.note):''}</div>
           </div>
         </div>${drv}`;
@@ -1131,7 +1131,7 @@ function renderSpotsHTML(){
     <div class="sc" id="sc${s.id}" onclick="focusSpot(${s.id})" draggable="true"
       ondragstart="onSpotDragStart(event,${s.id})" ondragend="onSpotDragEnd()">
       <div class="sc-top">
-        <div class="scn">${CICO[s.cat]} ${esc(s.name)}</div>
+        <div class="scn">${CICO[s.cat]||'📍'} ${esc(s.name)}</div>
         <div class="sc-actions">
           <button class="sc-btn" onclick="event.stopPropagation();editSpot(${s.id})">編輯</button>
           <button class="sc-btn del" onclick="event.stopPropagation();deleteSpot(${s.id})">刪除</button>
@@ -1276,7 +1276,7 @@ function renderStopsHTML(day){
       <div class="srow-main">
         <span class="srow-handle">⠿</span>
         <div class="sdot2" style="background:${clr}"></div>
-        <div class="srow-name">${CICO[sp?sp.cat:'city']} ${esc(st.name)}</div>
+        <div class="srow-name">${CICO[sp?sp.cat:'city']||'📍'} ${esc(st.name)}</div>
         <button class="sdel" onclick="rmStop(${day.id},${st.id})" style="${G.editMode?'':`opacity:0.35;cursor:not-allowed`}">✕</button>
       </div>
       <div class="srow-meta">
@@ -1402,7 +1402,7 @@ function mkIcon(cat,faded){
 }
 function mkPop(s){
   return `<div style="min-width:160px">
-    <div style="font-weight:600;font-size:14px;margin-bottom:3px">${CICO[s.cat]} ${esc(s.name)}</div>
+    <div style="font-weight:600;font-size:14px;margin-bottom:3px">${CICO[s.cat]||'📍'} ${esc(s.name)}</div>
     <div style="font-size:11px;color:#777;margin-bottom:2px">${esc(s.region)} · ⏱${fmtH(s.dur)}</div>
     ${s.cost?`<div style="font-size:11px;color:#777">預估 NZD ${s.cost}/人</div>`:''}
     ${s.note?`<div style="font-size:11px;color:#555;margin-top:3px;line-height:1.4">${esc(s.note)}</div>`:''}
@@ -1439,7 +1439,7 @@ function renderBudgetHTML(){
         <div class="ei-splits">${splitsDesc}</div>
       </div>`;
     }).join(''):'<div class="empty" style="padding:12px">尚無費用紀錄</div>'}
-    <button class="adde" onclick="openM(&quot;exp&quot;)">＋ 新增費用</button>
+    <button class="adde" onclick="openM('exp')">＋ 新增費用</button>
   </div>`;
   // settlement
   const settlement=calcSettlement();
@@ -1706,7 +1706,7 @@ async function geocode(){
 }
 function saveSpot(){
   const name=document.getElementById('sname').value.trim();if(!name){alert('請輸入景點名稱');return;}
-  const data={name,region:document.getElementById('sreg').value,cat:'spot',tags:[...G_editingTags],dur:parseFloat(document.getElementById('sdursel').value),cost:parseFloat(document.getElementById('scost').value)||0,note:document.getElementById('snote').value,lat:G.plat,lng:G.plng};
+  const data={name,region:document.getElementById('sreg').value,cat:'nature',tags:[...G_editingTags],dur:parseFloat(document.getElementById('sdursel').value),cost:parseFloat(document.getElementById('scost').value)||0,note:document.getElementById('snote').value,lat:G.plat,lng:G.plng};
   if(G.editSpotId){
     const s=G.spots.find(x=>x.id===G.editSpotId);if(s)Object.assign(s,data,{custom:s.custom,tags:[...G_editingTags]});
   } else {
@@ -1806,7 +1806,7 @@ function renderMobItin(){
           <div style="width:12px;height:12px;border-radius:50%;background:${clr};border:2px solid #fff;box-shadow:0 0 0 2px ${clr}"></div>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:16px;font-weight:600;color:var(--text);line-height:1.3">${CICO[sp?sp.cat:'city']} ${esc(st.name)}</div>
+          <div style="font-size:16px;font-weight:600;color:var(--text);line-height:1.3">${CICO[sp?sp.cat:'city']||'📍'} ${esc(st.name)}</div>
           <div style="font-size:12px;color:var(--muted);margin-top:3px">停留 ${fmtH(st.dur)}${sp?(' · '+esc(sp.region)):''}</div>
           ${st.note?`<div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;background:#F7F5F0;padding:6px 8px;border-radius:6px">${esc(st.note)}</div>`:''}
           ${sp&&sp.note&&sp.note!==st.note?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${esc(sp.note)}</div>`:''}
@@ -2081,7 +2081,7 @@ async function geocode(){
 }
 function saveSpot(){
   const name=document.getElementById('sname').value.trim();if(!name){alert('請輸入景點名稱');return;}
-  const data={name,region:document.getElementById('sreg').value,cat:'spot',tags:[...G_editingTags],dur:parseFloat(document.getElementById('sdursel').value),cost:parseFloat(document.getElementById('scost').value)||0,note:document.getElementById('snote').value,lat:G.plat,lng:G.plng};
+  const data={name,region:document.getElementById('sreg').value,cat:'nature',tags:[...G_editingTags],dur:parseFloat(document.getElementById('sdursel').value),cost:parseFloat(document.getElementById('scost').value)||0,note:document.getElementById('snote').value,lat:G.plat,lng:G.plng};
   if(G.editSpotId){
     const s=G.spots.find(x=>x.id===G.editSpotId);if(s)Object.assign(s,data,{custom:s.custom,tags:[...G_editingTags]});
   } else {
@@ -2533,29 +2533,41 @@ function quickAddSpot(name, lat, lng){
 
 function renderMkrs(){
   if(!G.map) return;
+
   // Clear existing markers
   G_markers.forEach(m=>m.setMap(null));
   G_markers = [];
+  // Clear day stop markers
+  if(G._stopMarkers){ G._stopMarkers.forEach(m=>m.setMap(null)); }
+  G._stopMarkers = [];
+  // Clear polylines
+  if(G._polylines){ G._polylines.forEach(p=>p.setMap(null)); }
+  G._polylines = [];
 
-  // Get days to show
-  const filterDay = G._dayFilter;
-  let targetDays = filterDay ? G.days.filter(d=>d.id===filterDay) : G.days;
+  // Which day is filtered?
+  const filterDayId = G.activeDay || null;
+  const targetDays = filterDayId ? G.days.filter(d=>d.id===filterDayId) : G.days;
+  const activeSpotIds = new Set(targetDays.flatMap(d=>(d.stops||[]).map(st=>+st.sid)));
+  const allItinIds = new Set(G.days.flatMap(d=>(d.stops||[]).map(st=>+st.sid)));
 
-  // Add spot markers
+  // Spot markers - dimmed if not in active day
   G.spots.forEach(sp=>{
     if(!sp.lat||!sp.lng) return;
     const clr = {nature:'#2C6E49',food:'#E07A5F',activity:'#F4A261',city:'#1D6FA4'}[sp.cat]||'#888';
+    const inActive = activeSpotIds.has(sp.id);
+    const opacity = filterDayId ? (inActive ? 1 : 0.15) : (allItinIds.has(sp.id) ? 1 : 0.5);
+    const scale = filterDayId ? (inActive ? 11 : 7) : 10;
     const marker = new google.maps.Marker({
       position:{lat:+sp.lat,lng:+sp.lng},
       map: G.map,
       title: sp.name,
       icon:{
         path: google.maps.SymbolPath.CIRCLE,
-        scale: 10,
+        scale,
         fillColor: clr,
-        fillOpacity: 1,
+        fillOpacity: opacity,
         strokeColor: '#fff',
-        strokeWeight: 2,
+        strokeWeight: inActive ? 2 : 1,
       }
     });
     marker.addListener('click', ()=>{
@@ -2570,24 +2582,45 @@ function renderMkrs(){
     G_markers.push(marker);
   });
 
-  // Draw route for itinerary days
-  targetDays.forEach(day=>{
-    const pts = (day.stops||[]).map(st=>{
+  // Draw polylines per day + numbered markers for active days
+  const dayColors=['#2C6E49','#1D6FA4','#E07A5F','#F4A261','#9B59B6','#E74C3C','#2ECC71'];
+  G.days.forEach((day,di)=>{
+    const isTarget = !filterDayId || day.id===filterDayId;
+    const stops = Array.isArray(day.stops) ? day.stops : [];
+    const clr = dayColors[di % dayColors.length];
+    const pts = stops.map(st=>{
       const sp=G.spots.find(x=>x.id===+st.sid);
-      return sp&&sp.lat&&sp.lng?{lat:+sp.lat,lng:+sp.lng}:null;
+      return sp&&sp.lat&&sp.lng ? {lat:+sp.lat, lng:+sp.lng, sp, st} : null;
     }).filter(Boolean);
-    if(pts.length>1){
-      new google.maps.Polyline({
-        path: pts,
+
+    if(pts.length > 1){
+      const poly = new google.maps.Polyline({
+        path: pts.map(p=>({lat:p.lat,lng:p.lng})),
         geodesic: true,
-        strokeColor: '#2C6E49',
-        strokeOpacity: 0.7,
-        strokeWeight: 2,
+        strokeColor: isTarget ? clr : '#bbb',
+        strokeOpacity: isTarget ? 0.85 : 0.2,
+        strokeWeight: isTarget ? 3 : 1,
         map: G.map
+      });
+      G._polylines.push(poly);
+    }
+
+    // Numbered stop markers only for active day
+    if(isTarget){
+      pts.forEach((p,i)=>{
+        const mk = new google.maps.Marker({
+          position:{lat:p.lat,lng:p.lng},
+          map: G.map,
+          label:{text:'D'+day.num+'-'+(i+1), color:'#fff', fontSize:'9px', fontWeight:'700'},
+          icon:{path:google.maps.SymbolPath.CIRCLE, scale:13, fillColor:clr, fillOpacity:1, strokeColor:'#fff', strokeWeight:2},
+          zIndex: 10
+        });
+        G._stopMarkers.push(mk);
       });
     }
   });
 }
+
 
 function focusSpot(id){
   const sp=G.spots.find(x=>x.id===id);
