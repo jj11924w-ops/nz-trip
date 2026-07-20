@@ -446,6 +446,24 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
 
 @keyframes overlayIn{from{opacity:0}to{opacity:1}}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 4px #F59E0B,0 0 20px rgba(245,158,11,.4)}50%{box-shadow:0 0 0 6px #F59E0B,0 0 30px rgba(245,158,11,.8)}}
+
+/* ── ITINERARY PREVIEW MODAL ── */
+#ov-preview{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:none;align-items:center;justify-content:center}
+#ov-preview.on{display:flex}
+.preview-box{background:#fff;border-radius:14px;width:min(900px,96vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden}
+.preview-header{padding:14px 20px;border-bottom:1px solid #e8e0d5;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fff}
+.preview-title{font-size:16px;font-weight:700;color:#2C6E49}
+.preview-tabs{display:flex;gap:0;overflow-x:auto;border-bottom:1px solid #e8e0d5;flex-shrink:0;background:#F7F5F0;padding:0 16px}
+.preview-tab{padding:8px 16px;border:none;background:none;cursor:pointer;font-size:12px;color:#888;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0}
+.preview-tab.on{color:#2C6E49;border-bottom-color:#2C6E49;font-weight:600;background:#fff}
+.preview-body{overflow-y:auto;flex:1;padding:16px}
+.preview-table{width:100%;border-collapse:collapse;font-size:13px}
+.preview-table th{background:#2C6E49;color:#fff;padding:8px 12px;text-align:left;font-weight:500;position:sticky;top:0}
+.preview-table td{padding:8px 12px;border-bottom:1px solid #f0ede8;vertical-align:top}
+.preview-table tr:hover td{background:#F7F5F0}
+.preview-table tr.drive-row td{background:#EFF6FF;color:#1D6FA4;font-size:12px;padding:5px 12px}
+.preview-day-header{font-size:14px;font-weight:700;color:#2C6E49;margin:0 0 12px 0;padding-bottom:8px;border-bottom:2px solid #2C6E49}
+
 </style>
 
 <!-- Firebase SDK -->
@@ -494,6 +512,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
     <button onclick="restoreBackup()" title="復原備份" style="margin-left:4px;font-size:11px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted)">↩ 復原</button>
     <button onclick="loadFromSheets()" title="重新載入" style="font-size:11px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted)">↻ 載入</button>
     <button id="edit-mode-btn" onclick="toggleEditMode()" style="font-size:11px;padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted)">👁 預覽</button>
+    <button onclick="openPreview()" style="font-size:11px;padding:3px 10px;border-radius:5px;border:1px solid #2C6E49;color:#2C6E49;background:none;cursor:pointer">📋 預覽</button>
     <button onclick="push()" style="font-size:11px;padding:3px 10px;border-radius:5px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-weight:500">💾 儲存</button>
   </div>
 </div>
@@ -3160,6 +3179,153 @@ function exportDayToGoogleMaps(){
   window.open(url, '_blank');
 }
 
+
+// ══════════════════════════════════════════
+//  ITINERARY PREVIEW
+// ══════════════════════════════════════════
+
+let G_previewDay = null;
+
+function openPreview(){
+  const days = G.days.filter(d=>(d.stops||[]).length > 0);
+  if(!days.length){ alert('尚無行程可預覽'); return; }
+
+  G_previewDay = days[0].id;
+  renderPreviewTabs(days);
+  renderPreviewTable(G_previewDay);
+  document.getElementById('ov-preview').classList.add('on');
+}
+
+function closePreview(){
+  document.getElementById('ov-preview').classList.remove('on');
+}
+
+function renderPreviewTabs(days){
+  const tabs = document.getElementById('preview-tabs');
+  tabs.innerHTML = days.map(d=>`
+    <button class="preview-tab${G_previewDay===d.id?' on':''}"
+      onclick="switchPreviewDay(${d.id})">
+      第${d.num}天${d.date?' '+d.date:''}
+    </button>`).join('') +
+    `<button class="preview-tab${G_previewDay==='all'?' on':''}"
+      onclick="switchPreviewDay('all')">
+      📋 全覽
+    </button>`;
+}
+
+function switchPreviewDay(dayId){
+  G_previewDay = dayId;
+  const days = G.days.filter(d=>(d.stops||[]).length > 0);
+  renderPreviewTabs(days);
+  renderPreviewTable(dayId);
+}
+
+function renderPreviewTable(dayId){
+  const body = document.getElementById('preview-body');
+
+  if(dayId === 'all'){
+    // Show all days in one table
+    const days = G.days.filter(d=>(d.stops||[]).length > 0);
+    body.innerHTML = `
+      <table class="preview-table">
+        <thead>
+          <tr>
+            <th>天數</th>
+            <th>日期</th>
+            <th>景點</th>
+            <th>時間</th>
+            <th>停留</th>
+            <th>地區</th>
+            <th>備註</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${days.map(day=>{
+            const stops = day.stops||[];
+            return stops.map((st,i)=>{
+              const sp = G.spots.find(x=>x.id===+st.sid);
+              const dt = st.startTime || computeTime(day,i);
+              const driveRow = i < stops.length-1 ? (() => {
+                const nx = G.spots.find(x=>x.id===+stops[i+1].sid);
+                const d = sp&&nx ? getDriveTime(sp,nx) : null;
+                return d ? `<tr class="drive-row"><td colspan="7">　🚗 開車約 ${fmtH(d)}</td></tr>` : '';
+              })() : '';
+              return `<tr>
+                <td style="font-weight:600;color:#2C6E49">第${day.num}天</td>
+                <td style="color:#888;font-size:12px">${day.date||''}</td>
+                <td>${CICO[sp?sp.cat:'city']||'📍'} <strong>${esc(st.name)}</strong></td>
+                <td>${dt}</td>
+                <td>${fmtH(st.dur)}</td>
+                <td>${esc(sp?sp.region:'')}</td>
+                <td style="color:#888;font-size:11px">${esc(st.note||sp?.note||'')}</td>
+              </tr>${driveRow}`;
+            }).join('');
+          }).join('')}
+        </tbody>
+      </table>`;
+    return;
+  }
+
+  // Single day view
+  const day = G.days.find(d=>d.id===dayId);
+  if(!day){ body.innerHTML=''; return; }
+  const stops = day.stops||[];
+  const sh = stops.reduce((a,s)=>a+(s.dur||0),0);
+  const dh = calcDrv(day);
+
+  body.innerHTML = `
+    <div class="preview-day-header">
+      第 ${day.num} 天${day.date?' · '+day.date:''}
+      ${dayReg(day)?` · ${dayReg(day)}`:''}
+      <span style="font-size:12px;font-weight:400;color:#888;margin-left:8px">
+        共 ${stops.length} 個景點 · 總計 ${fmtH(sh+dh)}${sh+dh>12?' ⚠️':''}
+      </span>
+    </div>
+    <table class="preview-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>景點</th>
+          <th>開始時間</th>
+          <th>停留時間</th>
+          <th>地區</th>
+          <th>標籤</th>
+          <th>備註</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${stops.map((st,i)=>{
+          const sp = G.spots.find(x=>x.id===+st.sid);
+          const dt = st.startTime || computeTime(day,i);
+          const tags = (sp?.tags||[]).map(t=>`<span style="background:#EAF5EE;color:#2C6E49;border-radius:10px;padding:1px 6px;font-size:10px">#${esc(t)}</span>`).join(' ');
+          const driveRow = i < stops.length-1 ? (() => {
+            const nx = G.spots.find(x=>x.id===+stops[i+1].sid);
+            const d = sp&&nx ? getDriveTime(sp,nx) : null;
+            return d ? `<tr class="drive-row"><td colspan="7">　🚗 開車約 ${fmtH(d)}</td></tr>` : '';
+          })() : '';
+          return `<tr>
+            <td style="color:#888;font-size:12px;text-align:center">${i+1}</td>
+            <td>${CICO[sp?sp.cat:'city']||'📍'} <strong>${esc(st.name)}</strong></td>
+            <td style="font-weight:500">${dt}</td>
+            <td>${fmtH(st.dur)}</td>
+            <td>${esc(sp?sp.region:'')}</td>
+            <td>${tags}</td>
+            <td style="color:#888;font-size:11px">${esc(st.note||sp?.note||'')}</td>
+          </tr>${driveRow}`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function printPreview(){
+  window.print();
+}
+
+// Close on background click
+document.getElementById('ov-preview').addEventListener('click', function(e){
+  if(e.target === this) closePreview();
+});
+
 </script>
 
 <!-- PROJECT PICKER SCREEN -->
@@ -3258,6 +3424,22 @@ function exportDayToGoogleMaps(){
     <div style="margin-top:10px;text-align:right">
       <button onclick="closeTagPicker()" style="padding:6px 16px;border-radius:7px;border:1px solid var(--border);background:none;cursor:pointer;font-size:13px">完成</button>
     </div>
+  </div>
+</div>
+
+
+<!-- ITINERARY PREVIEW MODAL -->
+<div id="ov-preview">
+  <div class="preview-box">
+    <div class="preview-header">
+      <div class="preview-title">📋 行程總覽</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="printPreview()" style="padding:5px 12px;border-radius:6px;border:1px solid #2C6E49;color:#2C6E49;background:none;cursor:pointer;font-size:12px">🖨️ 列印</button>
+        <button onclick="closePreview()" style="padding:5px 12px;border-radius:6px;border:1px solid #ccc;background:none;cursor:pointer;font-size:12px">✕ 關閉</button>
+      </div>
+    </div>
+    <div class="preview-tabs" id="preview-tabs"></div>
+    <div class="preview-body" id="preview-body"></div>
   </div>
 </div>
 
