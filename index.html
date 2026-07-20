@@ -558,8 +558,7 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
     </div>
     <div id="map"></div>
     <div class="day-filter-bar" id="day-filter-bar"></div>
-    <div class="mleg">
-      <div><span class="ldot" style="background:#2C6E49"></span>自然</div>
+    
       <div><span class="ldot" style="background:#C4572A"></span>美食</div>
       <div><span class="ldot" style="background:#7B5EA7"></span>活動</div>
       <div><span class="ldot" style="background:#1D6FA4"></span>城市</div>
@@ -963,6 +962,17 @@ document.addEventListener('DOMContentLoaded',function(){
   // init toggle position
   const tog=document.getElementById('rdtoggle');
   if(tog)tog.style.right=G.drawerOpen?'340px':'0px';
+  const drawer=document.getElementById('rdrawer');
+  if(drawer&&G.drawerOpen) drawer.classList.add('open');
+  // Ensure rdrawer is open on desktop
+  if(!isMobile()){
+    const dr=document.getElementById('rdrawer');
+    if(dr) dr.classList.add('open');
+    const tog=document.getElementById('rdtoggle');
+    if(tog) tog.style.right='340px';
+    const arr=document.getElementById('rtarrow');
+    if(arr) arr.textContent='▶';
+  }
   // Initialize preview mode
   setTimeout(()=>{
     const b=document.getElementById('add-day-btn');
@@ -998,7 +1008,7 @@ function toggleDrawer(){
   document.getElementById('rtarrow').textContent=G.drawerOpen?'▶':'◀';
   // shift toggle button to sit at the edge of the drawer
   if(toggle){toggle.style.right=G.drawerOpen?'340px':'0px';}
-  setTimeout(()=>{if(G.map)G.map.invalidateSize();},260);
+  setTimeout(()=>{if(G.map)google.maps.event.trigger(G.map,"resize");},260);
 }
 function mobTab(name,btn){
   const wasOpen=G.mobSheetOpen, wasSame=G.mobCurrent===name;
@@ -1736,7 +1746,16 @@ function saveSpot(){
   const name=document.getElementById('sname').value.trim();if(!name){alert('請輸入景點名稱');return;}
   const data={name,region:document.getElementById('sreg').value,cat:'nature',tags:[...G_editingTags],dur:parseFloat(document.getElementById('sdursel').value),cost:parseFloat(document.getElementById('scost').value)||0,note:document.getElementById('snote').value,lat:G.plat,lng:G.plng};
   if(G.editSpotId){
-    const s=G.spots.find(x=>x.id===G.editSpotId);if(s)Object.assign(s,data,{custom:s.custom,tags:[...G_editingTags]});
+    const s=G.spots.find(x=>x.id===G.editSpotId);
+    if(s){
+      Object.assign(s,data,{custom:s.custom,tags:[...G_editingTags]});
+      // Sync name change to all day stops
+      G.days.forEach(day=>{
+        (day.stops||[]).forEach(st=>{
+          if(+st.sid===G.editSpotId) st.name=data.name;
+        });
+      });
+    }
   } else {
     G.spots.push({id:Date.now(),custom:true,...data});
   }
@@ -2114,7 +2133,16 @@ function saveSpot(){
   const name=document.getElementById('sname').value.trim();if(!name){alert('請輸入景點名稱');return;}
   const data={name,region:document.getElementById('sreg').value,cat:'nature',tags:[...G_editingTags],dur:parseFloat(document.getElementById('sdursel').value),cost:parseFloat(document.getElementById('scost').value)||0,note:document.getElementById('snote').value,lat:G.plat,lng:G.plng};
   if(G.editSpotId){
-    const s=G.spots.find(x=>x.id===G.editSpotId);if(s)Object.assign(s,data,{custom:s.custom,tags:[...G_editingTags]});
+    const s=G.spots.find(x=>x.id===G.editSpotId);
+    if(s){
+      Object.assign(s,data,{custom:s.custom,tags:[...G_editingTags]});
+      // Sync name change to all day stops
+      G.days.forEach(day=>{
+        (day.stops||[]).forEach(st=>{
+          if(+st.sid===G.editSpotId) st.name=data.name;
+        });
+      });
+    }
   } else {
     G.spots.push({id:Date.now(),custom:true,...data});
   }
@@ -2451,6 +2479,7 @@ function initGoogleMap(){
     mapTypeControl: false,
     streetViewControl: false,
     fullscreenControl: false,
+    gestureHandling: 'greedy',
   });
   G_infoWindow = new google.maps.InfoWindow();
 
@@ -3322,8 +3351,11 @@ function printPreview(){
 }
 
 // Close on background click
-document.getElementById('ov-preview').addEventListener('click', function(e){
-  if(e.target === this) closePreview();
+document.addEventListener('DOMContentLoaded', function(){
+  const ovp = document.getElementById('ov-preview');
+  if(ovp) ovp.addEventListener('click', function(e){
+    if(e.target === this) closePreview();
+  });
 });
 
 </script>
