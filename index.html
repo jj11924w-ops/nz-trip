@@ -899,19 +899,23 @@ async function fetchDriveTime(spotA, spotB){
   if(!spotA?.lat||!spotA?.lng||!spotB?.lat||!spotB?.lng) return null;
   const key=`${spotA.id}_${spotB.id}`;
   const keyR=`${spotB.id}_${spotA.id}`;
-  if(G.driveCache[key]!=null) return G.driveCache[key];
-  if(G.driveCache[keyR]!=null) return G.driveCache[keyR];
+  if(G.driveCache[key]) return G.driveCache[key];
+  if(G.driveCache[keyR]) return G.driveCache[keyR];
   try{
     const url=`https://router.project-osrm.org/route/v1/driving/${spotA.lng},${spotA.lat};${spotB.lng},${spotB.lat}?overview=false`;
-    const r=await fetch(url);
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(),8000); // 8 sec timeout
+    const r=await fetch(url,{signal:ctrl.signal});
+    clearTimeout(timer);
     const d=await r.json();
     if(d.code==='Ok'&&d.routes?.length){
-      const hrs=Math.round(d.routes[0].duration/360)/10; // round to 0.1h
+      const hrs=Math.round(d.routes[0].duration/360)/10;
       G.driveCache[key]=hrs;
+      autoSave(); // cache it
       return hrs;
     }
   }catch(e){}
-  return null;
+  return null; // will retry next time
 }
 
 // fetch all drive times for a day's stops
@@ -925,6 +929,7 @@ async function fetchDayDriveTimes(day){
   await Promise.all(promises);
   renderDays();
   if(G.map) renderMkrs();
+  autoSave(); // save drive cache
 }
 
 // get drive time between two spots — real if cached, fallback to table
@@ -932,8 +937,8 @@ function getDriveTime(spotA, spotB){
   if(!spotA||!spotB) return null;
   const key=`${spotA.id}_${spotB.id}`;
   const keyR=`${spotB.id}_${spotA.id}`;
-  if(G.driveCache[key]!=null) return G.driveCache[key];
-  if(G.driveCache[keyR]!=null) return G.driveCache[keyR];
+  if(G.driveCache[key]) return G.driveCache[key];
+  if(G.driveCache[keyR]) return G.driveCache[keyR];
   // fallback to region table
   return getDrv(spotA.region, spotB.region);
 }
