@@ -899,8 +899,8 @@ async function fetchDriveTime(spotA, spotB){
   if(!spotA?.lat||!spotA?.lng||!spotB?.lat||!spotB?.lng) return null;
   const key=`${spotA.id}_${spotB.id}`;
   const keyR=`${spotB.id}_${spotA.id}`;
-  if(G.driveCache[key]) return G.driveCache[key];
-  if(G.driveCache[keyR]) return G.driveCache[keyR];
+  if(G.driveCache[key]!=null && G.driveCache[key]>=0) return G.driveCache[key];
+  if(G.driveCache[keyR]!=null && G.driveCache[keyR]>=0) return G.driveCache[keyR];
   try{
     const url=`https://router.project-osrm.org/route/v1/driving/${spotA.lng},${spotA.lat};${spotB.lng},${spotB.lat}?overview=false`;
     const ctrl=new AbortController();
@@ -910,12 +910,12 @@ async function fetchDriveTime(spotA, spotB){
     const d=await r.json();
     if(d.code==='Ok'&&d.routes?.length){
       const hrs=Math.round(d.routes[0].duration/360)/10;
-      G.driveCache[key]=hrs;
-      autoSave(); // cache it
+      G.driveCache[key]=hrs; // store even if 0 (same location)
+      autoSave();
       return hrs;
     }
   }catch(e){}
-  return null; // will retry next time
+  return null; // null = not cached, will retry
 }
 
 // fetch all drive times for a day's stops
@@ -937,8 +937,8 @@ function getDriveTime(spotA, spotB){
   if(!spotA||!spotB) return null;
   const key=`${spotA.id}_${spotB.id}`;
   const keyR=`${spotB.id}_${spotA.id}`;
-  if(G.driveCache[key]) return G.driveCache[key];
-  if(G.driveCache[keyR]) return G.driveCache[keyR];
+  if(G.driveCache[key]!=null && G.driveCache[key]>=0) return G.driveCache[key];
+  if(G.driveCache[keyR]!=null && G.driveCache[keyR]>=0) return G.driveCache[keyR];
   // fallback to region table
   return getDrv(spotA.region, spotB.region);
 }
