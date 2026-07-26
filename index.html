@@ -6,6 +6,8 @@
 <title>紐西蘭南島 旅遊規劃</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
+*, *::before, *::after{box-sizing:border-box}
+
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{--bg:#F7F5F0;--panel:#fff;--text:#1A1A18;--muted:#6B6B65;--border:#E0DDD6;--accent:#2C6E49;--accent2:#E76F51}
 html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFang TC','Microsoft JhengHei',sans-serif;background:var(--bg);color:var(--text);font-size:14px}
@@ -95,8 +97,8 @@ html,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,'PingFa
 .sdel:hover{color:#DC2626;background:#FEF2F2}
 .srow-meta{display:flex;align-items:center;gap:6px;margin-top:5px;padding-left:22px;flex-wrap:wrap}
 .time-lbl{font-size:10px;color:var(--muted);white-space:nowrap}
-.time-input{width:76px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;font-size:11px;background:var(--bg);color:var(--text)}
-.dur-input{width:52px;border:1px solid var(--border);border-radius:5px;padding:3px 4px;font-size:11px;background:var(--bg);color:var(--text);text-align:center}
+.time-input{width:70px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;font-size:11px!important;background:var(--bg);color:var(--text);box-sizing:border-box;-webkit-text-size-adjust:none}
+.dur-input{width:52px;border:1px solid var(--border);border-radius:5px;padding:3px 4px;font-size:11px;background:var(--bg);color:var(--text);text-align:center;font-size:11px!important;-webkit-text-size-adjust:none}
 .stop-note-input{width:100%;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:11px;background:var(--bg);color:var(--text);margin-top:4px;margin-left:22px;width:calc(100% - 26px);font-family:inherit}
 .stop-note-input::placeholder{color:#bbb}
 .drive-row{display:flex;align-items:center;gap:3px;padding:3px 0 3px 14px;font-size:10px;color:#1D6FA4}
@@ -1304,7 +1306,7 @@ function renderStopsHTML(day){
       </div>
       <div class="srow-meta">
         <span class="time-lbl">開始</span>
-        <input class="time-input" type="time" value="${dispTime}"
+        <input class="time-input" type="text" value="${dispTime}" placeholder="HH:MM" pattern="[0-9]{2}:[0-9]{2}" inputmode="numeric"
           onchange="updateStopTime(${day.id},${st.id},this.value)">
         <span class="time-lbl">停留</span>
         <input class="dur-input" type="number" value="${st.dur}" min="0.5" max="48" step="0.5"
